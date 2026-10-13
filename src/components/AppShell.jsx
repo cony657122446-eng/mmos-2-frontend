@@ -12,6 +12,7 @@ const navigationSections = [
       { id: 'initiation', label: '立项申请' },
       { id: 'trial', label: '试标管理' },
       { id: 'quotation', label: '报价管理' },
+      { id: 'output-attendance', label: '产出与出勤' },
       { id: 'acceptance', label: '验收管理' },
     ] },
   },
@@ -31,7 +32,7 @@ const navigationSections = [
 ];
 
 const pageTitles = {
-  overview: '经营总览', requirements: '需求列表', projects: '项目主库', initiation: '立项申请', trial: '试标管理', quotation: '报价管理', acceptance: '验收管理',
+  overview: '经营总览', requirements: '需求列表', projects: '项目主库', initiation: '立项申请', trial: '试标管理', quotation: '报价管理', 'output-attendance': '产出与出勤', acceptance: '验收管理',
   'hr-overview': '人事总览', 'people-master': '人员主库', 'people-changes': '人事变动', 'invoice-ledger': '开票台账', 'expense-ledger': '报销台账', todos: '待办列表',
 };
 
