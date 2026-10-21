@@ -1,10 +1,12 @@
 import React from 'react';
-import { Button, Card, Empty, Select, Space, Table, Tag, message } from 'antd';
+import { Button, Card, Empty, Select, Space, Table, Tag, Tooltip, Typography, message } from 'antd';
 import { ArrowRight, CheckCircle2, ClipboardCheck, FileText, ShieldCheck, UserRound } from 'lucide-react';
 import { getInitiationApplications, INITIATION_STORAGE_KEY } from './InitiationPage';
 import { isQuoteTodo, QUOTE_STORAGE_KEY, quoteHandling, quoteStage } from './QuotationPage';
 import { ACCEPTANCE_KEY, isAcceptanceTodo } from './AcceptancePage';
 import { loadInvoices } from './InvoiceLedgerPage';
+import { CUSTOMER_STORAGE_KEY, CUSTOMER_UPDATED_EVENT, loadFinanceCustomers } from '../data/financeCustomers';
+import { getInvoiceFields } from '../data/invoiceFields';
 
 function writeApplications(next) {
   window.localStorage.setItem(INITIATION_STORAGE_KEY, JSON.stringify(next));
@@ -19,6 +21,14 @@ export function TodoPage({ onNavigate, role = 'PMO', onRoleChange }) {
   const [quotes, setQuotes] = React.useState(loadQuotes);
   const [acceptance, setAcceptance] = React.useState(() => { try { return JSON.parse(localStorage.getItem(ACCEPTANCE_KEY) || '[]'); } catch { return []; } });
   const [invoices, setInvoices] = React.useState(loadInvoices);
+  const [customers, setCustomers] = React.useState(loadFinanceCustomers);
+  React.useEffect(() => {
+    const syncCustomers = () => setCustomers(loadFinanceCustomers());
+    const syncStorage = event => { if (event.key === CUSTOMER_STORAGE_KEY || event.key === null) syncCustomers(); };
+    window.addEventListener(CUSTOMER_UPDATED_EVENT, syncCustomers);
+    window.addEventListener('storage', syncStorage);
+    return () => { window.removeEventListener(CUSTOMER_UPDATED_EVENT, syncCustomers); window.removeEventListener('storage', syncStorage); };
+  }, []);
   React.useEffect(() => {
     const sync = event => { if (event.detail) setApplications(event.detail); };
     const syncQuotes = event => { if (event.detail) setQuotes(event.detail); };
@@ -35,7 +45,7 @@ export function TodoPage({ onNavigate, role = 'PMO', onRoleChange }) {
   const pmRows = applications.filter(item => item.creator === '王然' && ['草稿', '审核不通过'].includes(item.status));
   const rows = role === 'PMO' ? reviewRows : finance ? [] : pmRows;
   const quoteRows = finance ? [] : quotes.filter(item => isQuoteTodo(item, role));
-  const invoiceRows = finance ? invoices.filter(item => item.invoiceStatus === '待开票') : [];
+  const invoiceRows = finance ? invoices.filter(item => item.invoiceStatus === '待开票').map(item => ({ ...item, invoiceFields: getInvoiceFields(item, customers, acceptance) })) : [];
   const approveQuote = record => {
     const stamp = '2026-09-28 11:20';
     const next = quotes.map(item => item.key === record.key ? { ...item, review: '通过', updatedAt: stamp, activity: [`${stamp} · PMO 从待办审核通过，等待登记字节客户确认或签单`, ...(item.activity || [])] } : item);
@@ -66,10 +76,9 @@ export function TodoPage({ onNavigate, role = 'PMO', onRoleChange }) {
   ];
   const acceptanceRows = finance ? [] : acceptance.filter(item => isAcceptanceTodo(item, role));
   const invoiceColumns = [
-    { title: '验收编号', dataIndex: 'acceptanceNo', width: 140, render: value => <span className="todo-project-no">{value}</span> },
-    { title: '项目名称', dataIndex: 'projectName', width: 210, render: (value, record) => <button className="todo-name-link" onClick={() => onNavigate('invoice-ledger')}><span className="todo-name-icon"><FileText size={14} /></span><span><strong>{value}</strong><small>{record.customer} · {record.amount}</small></span></button> },
-    { title: '开票状态', dataIndex: 'invoiceStatus', width: 100, render: value => <Tag color="processing">{value}</Tag> },
-    { title: '处理', key: 'action', width: 140, render: () => <Button type="link" size="small" icon={<ArrowRight size={13} />} onClick={() => onNavigate('invoice-ledger')}>去开票</Button> },
+    { title: '业务项目', dataIndex: 'projectName', width: 190, render: (value, record) => <div className="invoice-todo-project"><span className="todo-name-icon"><FileText size={14} /></span><div><strong>{value}</strong><p>{record.projectNo}</p><p>客户：{record.customer}</p><p>系统验收编号<br />{record.acceptanceNo}</p></div></div> },
+    { title: '开票信息', key: 'invoiceFields', render: (_, record) => <dl className="invoice-todo-fields">{record.invoiceFields.map(field => <div key={field.key} className={`invoice-todo-field invoice-todo-field-${field.key}`}><dt>{field.key === 'itemName' ? '项目名称（开票）' : field.label}</dt><dd><Tooltip title={field.hint}><Typography.Text tabIndex={field.hint ? 0 : undefined} copyable={['待补充', '待识别'].includes(field.value) ? false : { tooltips: ['复制', '已复制'] }}>{field.value}</Typography.Text></Tooltip></dd></div>)}</dl> },
+    { title: '状态', dataIndex: 'invoiceStatus', width: 90, render: value => <Tag color="processing">{value}</Tag> },
   ];
   const acceptanceColumns = [
     { title: '验收编号', dataIndex: 'acceptanceNo', width: 140, render: value => <span className="todo-project-no">{value}</span> },
@@ -84,7 +93,13 @@ export function TodoPage({ onNavigate, role = 'PMO', onRoleChange }) {
     { title: '处理', key: 'action', width: 210, render: (_, record) => <Space size={6}>{role === 'PMO' && quoteStage(record) === '待审核' && <Button type="primary" size="small" icon={<CheckCircle2 size={13} />} onClick={() => approveQuote(record)}>直接通过</Button>}<Button type="link" size="small" icon={<ArrowRight size={13} />} onClick={() => onNavigate(`quotation:${record.key}`)}>{quoteStage(record) === '待签单' ? '登记签单' : quoteStage(record) === '待报价' ? '修改报价' : '查看详情'}</Button></Space> },
   ];
   const isPmo = role === 'PMO';
-  const financeTodo = <Card variant="borderless" className="todo-work-card"><div className="todo-card-heading"><div><h2>待开票</h2><p>只显示财务需要确认开票的记录。立项、报价和验收待办不会进入财务待办。</p></div><Tag color={invoiceRows.length ? 'processing' : 'default'}>{invoiceRows.length ? `${invoiceRows.length} 条待处理` : '暂无待处理'}</Tag></div><Table rowKey="key" columns={invoiceColumns} dataSource={invoiceRows} pagination={false} scroll={{ x: 680 }} locale={{ emptyText: <Empty description="当前没有待开票记录" /> }} /></Card>;
+  const financeTodo = <Card variant="borderless" className="todo-work-card invoice-todo-card">
+    <div className="todo-card-heading">
+      <div><h2>待开票</h2><p>每条待办完整展示开票字段，可直接复制。购买方资料、开票项目名称及编码由客户台账带入。</p></div>
+      <Space wrap><Tag color={invoiceRows.length ? 'processing' : 'default'}>{invoiceRows.length ? `${invoiceRows.length} 条待处理` : '暂无待处理'}</Tag><Button size="small" onClick={() => onNavigate('finance-invoices')}>发票与回款</Button></Space>
+    </div>
+    <Table rowKey="key" columns={invoiceColumns} dataSource={invoiceRows} pagination={false} locale={{ emptyText: <Empty description="当前没有待开票记录" /> }} />
+  </Card>;
   if (finance) return <div className="todo-page"><div className="todo-page-heading"><div><p className="eyebrow">MMOS 2.0 · 工作提醒</p><h1>待办列表</h1><p className="subtitle">财务只接收开票待办，不接收立项、报价和验收待办。</p></div><div className="todo-role-chip"><UserRound size={14} /> 演示身份 <Select size="small" value={role} onChange={onRoleChange} options={[{ value: 'PMO', label: 'PMO · 林晓彤' }, { value: 'PM', label: 'PM · 王然' }, { value: '财务', label: '财务 · 赵敏' }]} /></div></div><div className="todo-stat-row"><Card bordered={false}><div className="todo-stat"><span className="todo-stat-icon"><ClipboardCheck size={17} /></span><span><small>待开票</small><strong>{invoiceRows.length}</strong></span></div></Card></div>{financeTodo}</div>;
   return <div className="todo-page"><div className="todo-page-heading"><div><p className="eyebrow">MMOS 2.0 · 工作提醒</p><h1>待办列表</h1><p className="subtitle">{isPmo ? 'PMO 需要处理的项目立项申请会自动出现在这里。' : '这里显示当前项目经理需要补充或重新提交的申请。'}</p></div><div className="todo-role-chip"><UserRound size={14} /> 演示身份 <Select size="small" value={role} onChange={onRoleChange} options={[{ value: 'PMO', label: 'PMO · 林晓彤' }, { value: 'PM', label: 'PM · 王然' }, { value: '财务', label: '财务 · 赵敏' }]} /></div></div><div className="todo-stat-row"><Card bordered={false}><div className="todo-stat"><span className="todo-stat-icon"><ClipboardCheck size={17} /></span><span><small>{isPmo ? '待审核立项申请' : '我的待办申请'}</small><strong>{rows.length}</strong></span></div></Card><Card bordered={false}><div className="todo-stat"><span className="todo-stat-icon blue"><ShieldCheck size={17} /></span><span><small>处理权限</small><strong>{isPmo ? 'PMO' : 'PM'}</strong></span></div></Card></div><Card bordered={false} className="todo-work-card"><div className="todo-card-heading"><div><h2>{isPmo ? '立项申请待审核' : '我的项目待办'}</h2><p>{isPmo ? '可从列表直接通过，也可以进入立项申请详情查看完整字段后处理。' : '审核不通过的申请需要修改后重新提交，草稿可以继续填写。'}</p></div><Tag color={rows.length ? 'processing' : 'default'}>{rows.length ? `${rows.length} 条待处理` : '暂无待处理'}</Tag></div><Table rowKey="key" columns={columns} dataSource={rows} pagination={{ pageSize: 8, showSizeChanger: false }} scroll={{ x: 900 }} locale={{ emptyText: <Empty description={isPmo ? '当前没有待审核的立项申请' : '当前没有需要处理的项目待办'} /> }} /></Card><Card variant="borderless" className="todo-work-card"><div className="todo-card-heading"><div><h2>报价待办</h2><p>{isPmo ? '待审核的报价可以直接通过。退回和字节签单需要进入详情填写。' : '退回的报价需要修改后重新提交；已立项且有项目计划的项目需要开始执行。'}</p></div><Tag color={quoteRows.length ? 'processing' : 'default'}>{quoteRows.length ? `${quoteRows.length} 条待处理` : '暂无待处理'}</Tag></div><Table rowKey="key" columns={quoteColumns} dataSource={quoteRows} pagination={false} scroll={{ x: 760 }} locale={{ emptyText: <Empty description="当前没有报价待办" /> }} /></Card><Card variant="borderless" className="todo-work-card"><div className="todo-card-heading"><div><h2>验收待办</h2><p>{isPmo ? '待审核的验收申请进入详情后通过或驳回。驳回必须填写原因。' : '被驳回或撤回的验收申请需要修改后重新提交，编号保持不变。'}</p></div><Tag color={acceptanceRows.length ? 'processing' : 'default'}>{acceptanceRows.length ? `${acceptanceRows.length} 条待处理` : '暂无待处理'}</Tag></div><Table rowKey="key" columns={acceptanceColumns} dataSource={acceptanceRows} pagination={false} scroll={{ x: 680 }} locale={{ emptyText: <Empty description="当前没有验收待办" /> }} /></Card></div>;
 }

@@ -2,7 +2,7 @@ import React from 'react';
 import { Button, Card, DatePicker, Empty, Form, Input, InputNumber, Modal, Select, Space, Table, Tabs, Tag, Upload, message } from 'antd';
 import { CheckCircle2, FileText, Plus, Search, ShieldCheck, Undo2 } from 'lucide-react';
 import dayjs from 'dayjs';
-import { createInvoice } from './InvoiceLedgerPage';
+import { createInvoice, requestCombinedInvoice } from './InvoiceLedgerPage';
 
 export const ACCEPTANCE_KEY = 'mmos.acceptance.records.v1';
 const PM_NAME = '王然';
@@ -78,12 +78,12 @@ function Detail({ record, draft, onClose, role, onSubmit, onApprove, onRetry, on
   return <div className="detail-screen"><div className="detail-screen-bar"><div className="detail-screen-main"><button className="detail-back" onClick={onClose}>返回列表</button><div className="detail-screen-kicker">验收管理 · {project.projectNo}</div><h1>{project.projectName}</h1></div>{current && <Tag color={applyColor[current.applyStatus]}>{current.applyStatus}</Tag>}</div>
     <div className="trial-detail-meta"><span>客户：{project.customer}</span><span>PM：{project.pm}</span>{current?.acceptanceNo && <span>验收编号：{current.acceptanceNo}</span>}</div>
     {current?.rejectReason && <div className="quote-reject-box"><strong>驳回原因</strong><p>{current.rejectReason}</p></div>}
-    <section className="trial-detail-section"><div className="trial-detail-heading"><div><p className="panel-kicker">系统带入</p><h3>项目已有字段</h3></div></div><ol className="flow-detail-fields">{detailFields.map((label, index) => <li key={label}><em>{index + 1}</em><span><small>{label}</small><strong>{fields[label] || '—'}</strong></span></li>)}</ol></section>
+    <section className="trial-detail-section"><div className="trial-detail-heading"><div><p className="panel-kicker">系统带入</p><h3>项目已有字段</h3></div></div><ol className="flow-detail-fields">{detailFields.filter(label => role === '财务' || !/开票|汇款|成本|费用|利润|产值/.test(label)).map((label, index) => <li key={label}><em>{index + 1}</em><span><small>{label}</small><strong>{fields[label] || '—'}</strong></span></li>)}</ol></section>
     <section className="trial-detail-section"><div className="trial-detail-heading"><div><p className="panel-kicker">验收申请</p><h3>{current && !canEdit(current, role) ? '已锁定' : '填写后提交'}</h3></div></div>
       {current && !canEdit(current, role) ? <div className="quote-readonly"><span>验收类型 <b>{current.type}</b></span><span>验收周期 <b>{current.start} 至 {current.end}</b></span><span>数据量 <b>{current.volume}</b></span><span>金额 <b>{current.amount} 元</b></span><span>依据截图 <b>{current.evidenceName || '已上传'}</b></span>{current.evidence && <img className="quote-voucher-preview" src={current.evidence} alt="验收依据截图" />}{current.sheetLink && <span>验收单链接 <a href={current.sheetLink} target="_blank" rel="noreferrer">{current.sheetLink}</a></span>}{current.note && <p>备注：{current.note}</p>}</div> : <AcceptanceForm record={current} draft={draft} role={role} onSubmit={onSubmit} />}
     </section>
     {role === 'PMO' && current?.applyStatus === '待审核' && <PeriodEditor record={current} onSave={onChangePeriod} />}
-    {current?.snapshot && <section className="trial-detail-section"><div className="trial-detail-heading"><div><p className="panel-kicker">财务快照</p><h3>审核通过时生成，之后不回写</h3></div></div><div className="quote-field-grid">{Object.entries(current.snapshot).map(([label, value]) => <div key={label}><small>{label}</small><strong>{value}</strong></div>)}</div></section>}
+    {role === '财务' && current?.snapshot && <section className="trial-detail-section"><div className="trial-detail-heading"><div><p className="panel-kicker">财务快照</p><h3>审核通过时生成，之后不回写</h3></div></div><div className="quote-field-grid">{Object.entries(current.snapshot).map(([label, value]) => <div key={label}><small>{label}</small><strong>{value}</strong></div>)}</div></section>}
     {current && <section className="trial-detail-section"><div className="trial-detail-heading"><div><p className="panel-kicker">操作留痕</p><h3>验收动态</h3></div></div><div className="init-activity">{current.activity.map(item => <div key={item}><span /><p>{item}</p></div>)}</div></section>}
     {current && <div className="quote-drawer-actions">
       {role === 'PMO' && current.applyStatus === '待审核' && <Button danger icon={<Undo2 size={14} />} onClick={() => onReject(current)}>驳回</Button>}
@@ -119,6 +119,7 @@ function CreateModal({ records, open, preset, onCancel, onCreate }) {
 
 export function AcceptancePage({ role = 'PMO', onRoleChange, presetProject, onPresetHandled }) {
   const [records, setRecords] = React.useState(loadRecords);
+  const [invoiceSelection, setInvoiceSelection] = React.useState([]);
   const [tab, setTab] = React.useState('all');
   const [query, setQuery] = React.useState('');
   const [selectedKey, setSelectedKey] = React.useState('');
@@ -168,7 +169,7 @@ export function AcceptancePage({ role = 'PMO', onRoleChange, presetProject, onPr
     { title: '验收周期', key: 'period', width: 180, render: (_, record) => `${record.start} 至 ${record.end}` },
     { title: '申请状态', dataIndex: 'applyStatus', width: 100, render: value => <Tag color={applyColor[value]}>{value}</Tag> },
     { title: '项目状态', dataIndex: 'projectStatus', width: 120 },
-    { title: '开票状态', dataIndex: 'invoiceStatus', width: 100 },
+    ...(role === '财务' ? [{ title: '开票状态', dataIndex: 'invoiceStatus', width: 100 }] : []),
     { title: '操作', key: 'action', width: 180, render: (_, record) => <Space size={0} wrap>
       <Button type="link" size="small" onClick={() => setSelectedKey(record.key)}>查看</Button>
       {role === 'PMO' && record.applyStatus === '待审核' && <Button type="link" size="small" onClick={() => approve(record, false)}>通过</Button>}
@@ -182,9 +183,10 @@ export function AcceptancePage({ role = 'PMO', onRoleChange, presetProject, onPr
     <div className="trial-page-heading"><div><p className="eyebrow">项目管理 · 验收管理</p><h1>验收管理</h1><p className="subtitle">从项目进行中或项目暂停发起阶段验收、最终验收。PMO 审核通过后才生成开票快照。</p></div><Space><div className="trial-role-switch"><ShieldCheck size={14} /><span>演示身份</span><Select aria-label="演示身份" size="small" value={role} onChange={onRoleChange} options={[{ value: 'PMO', label: 'PMO · 林晓彤' }, { value: 'PM', label: 'PM · 王然' }, { value: '财务', label: '财务 · 赵敏' }]} /></div><Button type="primary" icon={<Plus size={14} />} onClick={() => { setPreset(null); setCreating(true); }}>发起验收</Button></Space></div>
     <div className="trial-stat-grid quote-stat-grid">{['待审核', '待修改', '已通过'].map(item => <Card key={item} variant="borderless"><div><small>{item}</small><strong>{countOf(item)}</strong></div></Card>)}</div>
     <Card variant="borderless" className="trial-work-card">
+      {role === 'PMO' && <Button style={{ marginBottom: 16 }} disabled={!invoiceSelection.length} onClick={() => { try { requestCombinedInvoice(records.filter(row => invoiceSelection.includes(row.key))); setInvoiceSelection([]); message.success('开票需求已提交财务'); } catch (error) { message.error(error.message); } }}>为所选验收提出开票需求（同客户可合票）</Button>}
       <div className="trial-list-toolbar"><Input prefix={<Search size={15} />} allowClear value={query} onChange={event => setQuery(event.target.value)} placeholder="搜索验收编号、项目编号、项目名称、客户、PM" aria-label="搜索验收申请" /><span className="trial-permission-chip"><ShieldCheck size={13} /> {role === 'PMO' ? '全部验收申请' : '我承接项目的验收申请'}</span></div>
       <Tabs activeKey={tab} onChange={setTab} className="trial-tabs" items={[['all', '全部'], ['待审核', '待审核'], ['待修改', '待修改'], ['已通过', '已通过']].map(([key, label]) => ({ key, label: <span>{label} <em>{countOf(key === 'all' ? '' : key)}</em></span> }))} />
-      <Table rowKey="key" columns={columns} dataSource={visible} pagination={{ pageSize: 8, showSizeChanger: false }} scroll={{ x: 1360 }} locale={{ emptyText: <Empty description="暂无符合条件的验收申请" /> }} onRow={record => ({ onClick: event => { if (event.target.closest('button, a, .ant-btn')) return; setSelectedKey(record.key); } })} />
+      <Table rowKey="key" rowSelection={role === 'PMO' ? { selectedRowKeys: invoiceSelection, onChange: setInvoiceSelection, getCheckboxProps: row => ({ disabled: row.applyStatus !== '已通过' }) } : undefined} columns={columns} dataSource={visible} pagination={{ pageSize: 8, showSizeChanger: false }} scroll={{ x: 1360 }} locale={{ emptyText: <Empty description="暂无符合条件的验收申请" /> }} onRow={record => ({ onClick: event => { if (event.target.closest('button, a, .ant-btn')) return; setSelectedKey(record.key); } })} />
     </Card>
     <CreateModal records={records} open={creating} preset={preset} onCancel={() => setCreating(false)} onCreate={project => { setCreating(false); setDraft({ ...project, type: preset?.acceptanceType }); }} />
   </div>;

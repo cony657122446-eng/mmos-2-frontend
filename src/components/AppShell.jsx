@@ -25,15 +25,20 @@ const navigationSections = [
   },
   {
     id: 'finance', label: '财务', items: [
-      { id: 'invoice-ledger', label: '开票台账', icon: ReceiptText },
-      { id: 'expense-ledger', label: '报销台账', icon: WalletCards },
+      { id: 'finance-journal', label: '日记账', icon: WalletCards },
+      { id: 'finance-customers', label: '客户台账', icon: ClipboardList },
+      { id: 'finance-invoices', label: '发票与回款', icon: ReceiptText },
+      { id: 'finance-costs', label: '职位成本', icon: ClipboardList },
+      { id: 'finance-settlement', label: '兼职结算', icon: WalletCards },
+      { id: 'finance-approvals', label: '财务审批记录', icon: FileText },
+      { id: 'finance-contracts', label: '合同管理', icon: FileText },
     ],
   },
 ];
 
 const pageTitles = {
   overview: '经营总览', requirements: '需求列表', projects: '项目主库', initiation: '立项申请', trial: '试标管理', quotation: '报价管理', 'output-attendance': '产出与出勤', acceptance: '验收管理',
-  'hr-overview': '人事总览', 'people-master': '人员主库', 'people-changes': '人事变动', 'invoice-ledger': '开票台账', 'expense-ledger': '报销台账', todos: '待办列表',
+  'hr-overview': '人事总览', 'people-master': '人员主库', 'people-changes': '人事变动', 'finance-customers': '客户台账', 'finance-invoices': '发票与回款', 'finance-journal': '日记账', 'finance-costs': '职位成本', 'finance-settlement': '兼职结算', 'finance-approvals': '财务审批记录', 'finance-contracts': '合同管理', 'expense-ledger': '报销台账', todos: '待办列表',
 };
 
 export function getPageTitle(id) { return pageTitles[id] || '经营总览'; }
@@ -62,7 +67,7 @@ export function Sidebar({ active = 'overview', role = 'PMO', mobileOpen, onNavig
     <aside className={`sidebar ${mobileOpen ? 'is-open' : ''}`}>
       <div className="brand-lockup"><span className="company-logo-icon" role="img" aria-label="公司 Logo 图标" /><div className="brand-wordmark"><strong>MMOS <span>2.0</span></strong><small>运营中台</small></div><button className="icon-button mobile-close" aria-label="关闭导航" onClick={onClose}><X size={18} /></button></div>
       <div className="workspace-switcher"><span className="workspace-dot" /> 产品与经营部 <ChevronDown size={15} /></div>
-      <nav className="primary-nav" aria-label="主导航">{navigationSections.map(section => <NavigationSection key={section.id} section={section} active={active} open={openSections[section.id]} onToggle={toggleSection} projectOpen={projectOpen} onProjectToggle={setProjectOpen} onNavigate={onNavigate} />)}<p className="nav-caption second">系统</p><button className="nav-item"><Settings2 size={19} strokeWidth={1.8} /><span>系统设置</span></button></nav>
+      <nav className="primary-nav" aria-label="主导航">{navigationSections.map(section => <NavigationSection key={section.id} section={section.id === 'finance' && role !== '财务' ? { ...section, items: section.items.filter(item => ['finance-customers', 'finance-costs'].includes(item.id)) } : section} active={active} open={openSections[section.id]} onToggle={toggleSection} projectOpen={projectOpen} onProjectToggle={setProjectOpen} onNavigate={onNavigate} />)}<p className="nav-caption second">系统</p><button className="nav-item"><Settings2 size={19} strokeWidth={1.8} /><span>系统设置</span></button></nav>
       <div className="sidebar-foot"><div className="help-row"><CircleHelp size={17} /><span>需要帮助？</span></div><div className="user-card"><div className="avatar">{role === '财务' ? '赵' : role === 'PM' ? '王' : '林'}</div><div><strong>{role === '财务' ? '赵敏' : role === 'PM' ? '王然' : '林晓彤'}</strong><small>{role === '财务' ? '财务' : role === 'PM' ? '项目经理' : 'PMO 管理员'}</small></div><ChevronDown size={15} /></div></div>
     </aside>{mobileOpen && <button className="backdrop" aria-label="关闭导航" onClick={onClose} />}
   </>;
