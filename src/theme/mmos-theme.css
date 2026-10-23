@@ -1,0 +1,193 @@
+/* MMOS adapters for the supplied Pearl Blue theme. Business layout/state remain in styles.css. */
+.mmos-erp-theme {
+  --erp-font: Inter, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif;
+  --erp-text-secondary: #5E718F;
+  --erp-link: #2268E8;
+  --erp-success-text: #087D60;
+  --erp-warning-text: #93580F;
+  --erp-danger-text: #BC374A;
+  --erp-nav-gradient: linear-gradient(112deg, #2868DB, #3274E8);
+  --erp-row-padding: 10px;
+  --ink: var(--erp-text-strong); --muted: var(--erp-text-secondary); --line: var(--erp-border);
+  --surface: var(--erp-surface); --blue: var(--erp-primary); --blue-soft: var(--erp-primary-soft);
+  --teal: var(--erp-green); --teal-soft: #E3F9F1; --amber: var(--erp-warning-text); --amber-soft: #FFF2DF;
+  --violet: var(--erp-purple); --violet-soft: #F0EDFF;
+  --brand-blue: var(--erp-primary); --brand-indigo: var(--erp-cyan);
+  background: var(--erp-bg); color: var(--erp-text); font-family: var(--erp-font);
+  font-variant-numeric: tabular-nums; font-size: 14px; line-height: 1.5;
+}
+.mmos-erp-theme[data-density="comfortable"] { --erp-row-padding: 14px; }
+.mmos-erp-theme :is(button, input, select, textarea) { font-family: var(--erp-font); }
+.mmos-erp-theme :focus-visible { outline: 2px solid var(--erp-primary); outline-offset: 3px; }
+.mmos-erp-theme :is(input, button, a) { touch-action: manipulation; }
+.mmos-erp-theme .app-shell { background: radial-gradient(ellipse 60% 350px at 80% 0%, var(--erp-bg-tint), transparent), var(--erp-bg); }
+.mmos-erp-theme .sidebar { width: var(--erp-sidebar-width); padding: 20px 12px 16px; background: var(--erp-sidebar-bg); color: var(--erp-text); border-right: 1px solid var(--erp-border); box-shadow: none; }
+.mmos-erp-theme .main-area { width: calc(100% - var(--erp-sidebar-width)); margin-left: var(--erp-sidebar-width); min-width: 0; }
+.mmos-erp-theme .brand-lockup.mmos-brand-lockup { padding: 0 4px 16px; border-bottom: 1px solid var(--erp-border); }
+.mmos-erp-theme .mmos-system-logo { background: transparent; border-radius: 0; padding: 0; }
+.mmos-erp-theme .workspace-switcher { margin-top: 16px; background: var(--erp-surface); border-color: var(--erp-border); color: var(--erp-text-secondary); height: 36px; font-size: 12px; }
+.mmos-erp-theme .workspace-switcher svg { color: var(--erp-text-secondary); }
+.mmos-erp-theme .workspace-dot { background: var(--erp-cyan); box-shadow: 0 0 0 3px var(--erp-cyan-soft); }
+.mmos-erp-theme .primary-nav { padding-top: 16px; scrollbar-width: thin; scrollbar-color: #D8E5F6 transparent; }
+.mmos-erp-theme .nav-section-toggle { color: var(--erp-text-secondary); font-size: 12px; letter-spacing: .02em; height: 34px; }
+.mmos-erp-theme .nav-section-toggle:hover { background: var(--erp-primary-soft); color: var(--erp-text); }
+.mmos-erp-theme .nav-item { color: var(--erp-text); font-size: 13px; height: 42px; border-radius: 8px; }
+.mmos-erp-theme :is(.nav-item:hover, .subnav button:hover) { color: var(--erp-link); background: var(--erp-primary-soft); }
+.mmos-erp-theme :is(.nav-item.active, .subnav button.active) { background: var(--erp-nav-gradient); color: white; box-shadow: 0 3px 8px rgba(53,121,246,.12); }
+.mmos-erp-theme .nav-item em { background: #E8F0FC; color: var(--erp-text-secondary); }
+.mmos-erp-theme .nav-item.active em { color: #fff; background: rgba(255,255,255,.18); }
+.mmos-erp-theme .subnav { padding-left: 30px; }
+.mmos-erp-theme .subnav button { color: var(--erp-text-secondary); border-left-color: #D9E6F6; font-size: 13px; }
+.mmos-erp-theme .subnav.is-open button { min-height: 34px; }
+.mmos-erp-theme .subnav button.active { border-color: transparent; border-radius: 6px; }
+.mmos-erp-theme :is(.nav-caption, .help-row, .user-card small, .user-card>svg) { color: var(--erp-text-secondary); font-size: 12px; }
+.mmos-erp-theme .user-card { border-color: var(--erp-border); }
+.mmos-erp-theme .user-card strong { color: var(--erp-text); font-size: 13px; }
+.mmos-erp-theme :is(.avatar, .top-avatar) { color: var(--erp-link); background: #E3EEFF; }
+.mmos-erp-theme .topbar { height: var(--erp-topbar-height); padding: 0 24px; border-color: var(--erp-border); background: rgba(255,255,255,.82); backdrop-filter: blur(8px); gap: 16px; }
+.mmos-erp-theme .breadcrumbs { color: var(--erp-text-secondary); white-space: nowrap; }
+.mmos-erp-theme .breadcrumbs strong { color: var(--erp-text); }
+.mmos-erp-theme .top-actions { gap: 12px; }
+.mmos-erp-theme .search-box { width: clamp(160px, 18vw, 246px); height: 36px; border-color: var(--erp-border); color: var(--erp-text-secondary); }
+.mmos-erp-theme .search-box input { font-size: 12px; }
+.mmos-erp-theme .search-box:focus-within { border-color: var(--erp-primary); box-shadow: 0 0 0 3px #3579F619; }
+.mmos-erp-theme .icon-button { color: var(--erp-text-secondary); }
+.mmos-erp-theme .icon-button:hover { color: var(--erp-link); background: var(--erp-primary-soft); }
+.mmos-erp-theme .todo-button { color: var(--erp-link); background: var(--erp-primary-soft); border-color: #DAE7FB; font-size: 13px; }
+.mmos-erp-theme .todo-button:hover { transform: none; background: #DBE9FF; border-color: #BDD4F8; }
+.mmos-erp-theme .todo-button svg { color: inherit; }
+.mmos-erp-theme :is(.notification b, .todo-count) { background: var(--erp-red); }
+.mmos-erp-theme .content-wrap { max-width: 1720px; padding: 24px 24px 40px; }
+.mmos-erp-theme :is(.overview-page, .requirements-page, .project-page, .init-page, .trial-page, .todo-page) { max-width: none; min-width: 0; }
+.mmos-erp-theme :is(h1,h2,h3,h4) { color: var(--erp-text-strong); font-family: var(--erp-font); }
+.mmos-erp-theme :is(.page-heading,.requirements-toolbar,.project-page-heading,.init-page-heading,.trial-page-heading,.todo-page-heading,.detail-screen-main) h1 { font: 700 26px/1.4 var(--erp-font); letter-spacing: -.02em; color: var(--erp-text-strong); }
+.mmos-erp-theme :is(.page-heading,.requirements-toolbar,.project-page-heading,.init-page-heading,.trial-page-heading,.todo-page-heading) { margin-bottom: 20px; gap: 16px; flex-wrap: wrap; }
+.mmos-erp-theme :is(.subtitle,.trial-page-heading .subtitle,.init-page-heading .subtitle,.todo-page-heading .subtitle) { color: var(--erp-text-secondary); font-size: 13px; line-height: 1.65; }
+.mmos-erp-theme :is(.eyebrow,.panel-kicker,.drawer-kicker,.detail-screen-kicker) { color: var(--erp-text-secondary); font-size: 12px; letter-spacing: .04em; }
+.mmos-erp-theme :is(.panel,.ant-card,.project-stat-grid .ant-card,.init-stat-grid .ant-card,.trial-stat-grid .ant-card,.flow-stage-grid .ant-card,.todo-stat-row .ant-card) { background: var(--erp-surface); border: 1px solid var(--erp-border); border-radius: var(--erp-radius-lg); box-shadow: var(--erp-shadow-card); }
+.mmos-erp-theme .ant-card-head { border-bottom-color: var(--erp-divider); }
+.mmos-erp-theme .ant-card-head-title { font-size: 16px; font-weight: 650; }
+.mmos-erp-theme :is(.metric-grid,.project-stat-grid,.init-stat-grid,.trial-stat-grid,.todo-stat-row,.overview-lower) { gap: 16px; }
+.mmos-erp-theme :is(.project-stat-grid, .init-stat-grid).ant-row { column-gap: 0; }
+.mmos-erp-theme .metric-grid { grid-template-columns: repeat(auto-fit,minmax(210px,1fr)); }
+.mmos-erp-theme :is(.metric-card,.antd-metric-card) { height: auto; min-height: 120px; padding: 20px; }
+.mmos-erp-theme .metric-body strong { color: var(--erp-text-strong); font: 700 28px/1.3 var(--erp-font); }
+.mmos-erp-theme :is(.project-stat,.init-stat,.trial-stat-grid,.flow-stage-grid,.todo-stat) strong { color: var(--erp-text-strong); font: 700 26px/1.35 var(--erp-font); }
+.mmos-erp-theme :is(.metric-body p,.metric-body small,.project-stat small,.init-stat small,.trial-stat-grid small,.flow-stage-grid small,.todo-stat small) { color: var(--erp-text-secondary); font: 400 12px/1.6 var(--erp-font); }
+.mmos-erp-theme :is(.metric-icon,.stat-icon,.init-stat-icon,.todo-stat-icon) { width: 38px; height: 38px; border-radius: 10px; box-shadow: none; }
+.mmos-erp-theme :is(.metric-icon.blue,.stat-icon.blue,.init-stat-icon.blue,.todo-stat-icon.blue) { background: var(--erp-primary-soft); color: var(--erp-primary); }
+.mmos-erp-theme :is(.metric-icon.teal,.stat-icon.green) { background: var(--erp-cyan-soft); color: #0D858D; }
+.mmos-erp-theme :is(.metric-icon.purple,.metric-icon.violet,.init-stat-icon.purple,.todo-stat-icon) { background: #F0EDFF; color: var(--erp-purple); }
+.mmos-erp-theme .metric-icon.purple { background: var(--erp-cyan-soft); color: #0D858D; }
+.mmos-erp-theme :is(.metric-icon.amber,.stat-icon.amber,.init-stat-icon.amber) { background: #FFF2DF; color: var(--erp-warning-text); }
+.mmos-erp-theme :is(.stat-icon.red,.init-stat-icon.red) { background: #FFECEE; color: var(--erp-danger-text); }
+.mmos-erp-theme :is(.panel-heading h2,.antd-panel h2,.init-list-heading h2,.todo-card-heading h2,.drawer-title,.project-drawer-title) { font: 650 16px/1.5 var(--erp-font); color: var(--erp-text-strong); }
+.mmos-erp-theme :is(.task-copy strong,.activity-copy strong) { color: var(--erp-text); font-size: 13px; }
+.mmos-erp-theme :is(.task-copy small,.activity-copy p,.activity-item time,.activity-status,.foot-card span,.chart-supporting-text,.range-note,.range-note small) { color: var(--erp-text-secondary); font-size: 12px; }
+.mmos-erp-theme :is(.task-item,.activity-item,.panel-heading,.foot-card,.stage-panel,.project-filter-panel,.filter-strip,.list-summary) { border-color: var(--erp-divider); }
+.mmos-erp-theme :is(.task-item:hover,.outline-button,.foot-card,.time-range,.time-range .range-readonly) { background: var(--erp-surface-soft); }
+.mmos-erp-theme :is(.task-action,.text-button,.activity-status b,.foot-card svg,.queue-count) { color: var(--erp-link); font-size: 12px; }
+.mmos-erp-theme :is(.activity-icon.blue,.queue-count) { background: var(--erp-primary-soft); }
+.mmos-erp-theme :is(.time-range>.anticon,.time-range .ant-picker-suffix,.range-note>svg) { color: var(--erp-primary); }
+.mmos-erp-theme :is(.task-dot.blue,.task-dot.purple) { background: var(--erp-primary); }
+.mmos-erp-theme .task-dot.violet { background: var(--erp-cyan); }
+.mmos-erp-theme .task-dot.amber { background: var(--erp-orange); }
+.mmos-erp-theme .activity-icon.violet { color: var(--erp-purple); background: #F0EDFF; }
+.mmos-erp-theme .activity-icon.amber { color: var(--erp-warning-text); background: #FFF2DF; }
+.mmos-erp-theme :is(.range-note strong,.foot-card strong,.outline-button) { color: var(--erp-text); font-size: 13px; }
+.mmos-erp-theme :is(.time-range,.time-range .range-readonly,.time-range .range-picker) { border-color: var(--erp-border); color: var(--erp-text-secondary); }
+.mmos-erp-theme .time-range .ant-segmented-item-selected { color: var(--erp-link); background: #fff; }
+.mmos-erp-theme :is(.time-range .ant-segmented-item,.time-range .range-picker .ant-picker-input>input) { font-size: 12px; color: var(--erp-text); }
+
+/* Ant Design and native actions. Preserve semantic danger/disabled variants. */
+.mmos-erp-theme .ant-btn { font-size: 13px; border-radius: var(--erp-radius-sm); }
+.mmos-erp-theme .ant-btn-primary:not(:disabled):not(.ant-btn-dangerous), .mmos-erp-theme .primary-button { background: var(--erp-nav-gradient); border-color: transparent; color: #fff; box-shadow: 0 3px 8px rgba(53,121,246,.10); }
+.mmos-erp-theme .ant-btn-primary:not(:disabled):not(.ant-btn-dangerous):hover, .mmos-erp-theme .primary-button:hover { background: #2268E8; transform: none; }
+.mmos-erp-theme .ant-btn-primary:disabled { background: #E8EDF5; color: #8996AA; border-color: var(--erp-border); box-shadow: none; }
+.mmos-erp-theme :is(.ant-btn-link,.table-link,.detail-link,.project-field>a,.trial-detail-hero a) { color: var(--erp-link); font-size: 13px; }
+.mmos-erp-theme .ant-btn-dangerous:not(:disabled) { color: var(--erp-danger-text); }
+.mmos-erp-theme .ant-btn-dangerous.ant-btn-primary:not(:disabled) { background: #C94355; color: white; border-color: #C94355; }
+.mmos-erp-theme .ant-tabs .ant-tabs-tab { font-size: 13px; }
+.mmos-erp-theme .ant-tabs .ant-tabs-ink-bar { background: var(--erp-primary); }
+.mmos-erp-theme .ant-tabs-tab-btn em, .mmos-erp-theme .finance-tab-count { color: var(--erp-text-secondary); background: #EDF2FA; font-size: 12px; }
+.mmos-erp-theme .ant-tabs-tab-active .ant-tabs-tab-btn em { background: var(--erp-primary-soft); color: var(--erp-link); }
+.mmos-erp-theme .requirements-tabs>.ant-tabs-nav { border-color: var(--erp-border); box-shadow: var(--erp-shadow-card); border-radius: 12px; }
+.mmos-erp-theme .ant-table { font-size: 13px; font-variant-numeric: tabular-nums; }
+.mmos-erp-theme .ant-table-wrapper .ant-table-thead>tr>th { font-size: 12px; font-weight: 600; color: var(--erp-text-secondary); background: #F2F7FD; border-bottom-color: var(--erp-divider); padding: var(--erp-row-padding) 12px; }
+.mmos-erp-theme .ant-table-wrapper .ant-table-tbody>tr>td { font-size: 13px; color: var(--erp-text); border-bottom-color: var(--erp-divider); padding: var(--erp-row-padding) 12px; }
+.mmos-erp-theme .ant-table-wrapper .ant-table-tbody>tr:hover>td { background: var(--erp-surface-soft); }
+.mmos-erp-theme .ant-table-wrapper .ant-table-tbody>tr.ant-table-row-selected>td { background: var(--erp-primary-soft); }
+.mmos-erp-theme .ant-table-wrapper .ant-table-cell-fix-right, .mmos-erp-theme .ant-table-wrapper .ant-table-cell-fix-left { background: var(--erp-surface); }
+.mmos-erp-theme :is(.ant-input,.ant-input-affix-wrapper,.ant-input-number,.ant-picker,.ant-select-selector) { border-color: #D8E5F5; border-radius: 8px; font-size: 13px; }
+.mmos-erp-theme .ant-input, .mmos-erp-theme .ant-picker-input>input, .mmos-erp-theme .ant-input-number-input { font-size: 13px; color: var(--erp-text); }
+.mmos-erp-theme :is(.ant-checkbox-wrapper,.ant-form-item-label>label,.column-config-grid .ant-checkbox-wrapper) { font-size: 13px; color: var(--erp-text); }
+.mmos-erp-theme :is(.project-filter-panel,.trial-role-switch,.init-role-switch) .ant-select-selector { font-size: 13px!important; }
+.mmos-erp-theme .ant-tag { border-radius: 6px; font-size: 12px!important; line-height: 22px; }
+.mmos-erp-theme :is(.ant-tag-success,.ant-tag-green,.ant-tag-lime,.init-status-tag.approved) { color: var(--erp-success-text); background: #E3F9F1; border-color: #C6EDE1; }
+.mmos-erp-theme :is(.ant-tag-warning,.ant-tag-orange,.ant-tag-gold,.init-status-tag.withdrawn) { color: var(--erp-warning-text); background: #FFF2DF; border-color: #F7E2BE; }
+.mmos-erp-theme :is(.ant-tag-error,.ant-tag-red,.init-status-tag.rejected) { color: var(--erp-danger-text); background: #FFECEE; border-color: #F7D1D6; }
+.mmos-erp-theme :is(.ant-tag-processing,.ant-tag-blue,.init-status-tag.review) { color: var(--erp-link); background: var(--erp-primary-soft); border-color: #D0E1FF; }
+.mmos-erp-theme :is(.ant-tag-cyan) { color: #087B83; background: var(--erp-cyan-soft); border-color: #BDEAEF; }
+.mmos-erp-theme .ant-modal-content { border: 1px solid var(--erp-border); border-radius: 16px; }
+.mmos-erp-theme :is(.ant-modal-title,.ant-drawer-title) { color: var(--erp-text-strong); font-size: 16px; }
+.mmos-erp-theme .ant-drawer-header { border-color: var(--erp-divider); }
+.mmos-erp-theme .ant-form-item-explain-error { color: var(--erp-danger-text); }
+
+/* Shared detail screens, form groups and dense business labels. */
+.mmos-erp-theme :is(.source-card,.init-source-card,.project-detail-hero,.trial-detail-hero,.quote-field-grid>div,.flow-detail-fields li,.status-history-stage-grid>div,.project-filter-panel,.init-form,.raw-requirement,.stage-record) { background: var(--erp-surface-soft); border-color: var(--erp-border); }
+.mmos-erp-theme :is(.project-name-icon,.init-name-icon,.trial-name-icon,.todo-name-icon,.todo-role-chip,.security-tag) { color: var(--erp-link); background: var(--erp-primary-soft); border-color: var(--erp-border); }
+.mmos-erp-theme :is(.project-name-link,.init-name-link,.trial-name-link,.todo-name-link) strong { color: var(--erp-text); font-size: 13px; }
+.mmos-erp-theme :is(.project-name-link,.init-name-link,.trial-name-link,.todo-name-link) small { color: var(--erp-text-secondary); font-size: 12px; }
+.mmos-erp-theme :is(.project-no-cell,.init-project-no,.trial-project-no,.todo-project-no) { font: 500 12px var(--erp-font); color: var(--erp-text-secondary); }
+.mmos-erp-theme :is(.project-field label,.quote-field-grid small,.flow-detail-fields small,.requirements-field>span,.project-detail-stat-row small,.init-source-grid small,.trial-detail-hero small,.status-history-stage-grid small,.finance-invoice-field-readonly small) { color: var(--erp-text-secondary); font-size: 12px; }
+.mmos-erp-theme :is(.project-field>span,.project-field>strong,.quote-field-grid strong,.flow-detail-fields strong,.requirements-field>strong,.project-detail-stat-row strong,.init-source-grid strong,.trial-detail-hero strong,.status-history-stage-grid b) { color: var(--erp-text); font-size: 13px; }
+.mmos-erp-theme :is(.detail-section-heading h3,.drawer-section-heading h3,.trial-detail-heading h3,.init-detail-heading h3) { font: 650 16px/1.5 var(--erp-font); color: var(--erp-text-strong); }
+.mmos-erp-theme :is(.drawer-meta,.project-detail-subtitle,.trial-detail-meta,.init-detail-meta,.modal-help-copy,.new-demand-intro,.init-permission-note,.project-activity p,.init-activity p,.stage-record-note,.empty-copy,.finance-prototype-note,.list-summary>span,.project-list-meta,.init-table-meta,.init-permission-chip,.trial-permission-chip,.status-legend) { color: var(--erp-text-secondary); font-size: 12px; }
+.mmos-erp-theme :is(.init-role-switch,.trial-role-switch) { font-size: 12px; color: var(--erp-text-secondary); border-color: var(--erp-border); }
+.mmos-erp-theme :is(.init-role-switch svg,.trial-role-switch svg,.filter-strip>svg,.trial-permission-chip svg,.init-permission-chip svg,.init-access-card svg) { color: var(--erp-primary); }
+.mmos-erp-theme :is(.project-field-group h4,.source-card .ant-card-head-title>span,.init-source-card .ant-card-head-title>span) { color: var(--erp-link); background: var(--erp-surface-soft); font-size: 13px; }
+.mmos-erp-theme :is(.field-empty,.empty-cell) { color: var(--erp-text-secondary)!important; }
+.mmos-erp-theme :is(.detail-back,.related-records button) { border-color: var(--erp-border); color: var(--erp-text-secondary); }
+.mmos-erp-theme :is(.detail-back:hover,.related-records button:hover) { border-color: #B9D1F7; background: var(--erp-primary-soft); color: var(--erp-link); }
+.mmos-erp-theme :is(.history-dot,.project-activity>div>span,.init-activity>div>span,.status-dot.current span) { background: var(--erp-primary); }
+.mmos-erp-theme :is(.status-dot.done span,.legend-dot.done) { background: var(--erp-green); }
+.mmos-erp-theme :is(.status-dot.failed span,.legend-dot.failed) { background: var(--erp-red); }
+.mmos-erp-theme .flow-track span { background: #EDF2FA; color: var(--erp-text-secondary); font-size: 12px; }
+.mmos-erp-theme .flow-track .done { color: var(--erp-success-text); background: #E3F9F1; }
+.mmos-erp-theme .flow-track .current { background: var(--erp-nav-gradient); color: white; }
+.mmos-erp-theme :is(.quote-wait-box,.new-demand-hint) { background: var(--erp-primary-soft); color: var(--erp-link); font-size: 13px; }
+.mmos-erp-theme .quote-sign-box { background: #E3F9F1; color: var(--erp-success-text); font-size: 13px; }
+.mmos-erp-theme :is(.quote-reject-box,.trial-failure-box,.init-reason-box) { background: #FFF3F4; color: var(--erp-danger-text); font-size: 13px; }
+.mmos-erp-theme .placeholder-page p:last-child { color: var(--erp-text-secondary); }
+.mmos-erp-theme .placeholder-page h1 { color: var(--erp-text-strong); }
+.mmos-erp-theme .finance-invoice-fields.quote-field-grid { gap: 12px; }
+.mmos-erp-theme .finance-invoice-fields.quote-field-grid>div { border-radius: 8px; background: var(--erp-surface); }
+.mmos-erp-theme .ant-table-content { scrollbar-width: thin; scrollbar-color: #B6C8E3 #F0F5FC; }
+.mmos-erp-theme .finance-page .trial-work-card>.ant-card-body { padding: 20px; }
+.mmos-erp-theme .finance-page .trial-list-toolbar { padding: 0 0 16px; }
+.mmos-erp-theme .finance-prototype-note { gap: 12px; flex-wrap: wrap; }
+.mmos-erp-theme .backdrop { background: rgba(25,42,70,.28); }
+@media (max-width: 1100px) { .mmos-erp-theme .search-box { display:none; } .mmos-erp-theme .top-actions { gap:8px; } .mmos-erp-theme .overview-lower { grid-template-columns:1fr; } }
+@media (max-width: 760px) {
+  .mmos-erp-theme .main-area { width:100%; margin-left:0; }
+  .mmos-erp-theme .sidebar { width:224px; box-shadow:8px 0 30px rgba(34,91,170,.12); }
+  .mmos-erp-theme .topbar { padding:0 16px; gap:8px; }
+  .mmos-erp-theme .content-wrap { padding:20px 16px 32px; }
+  .mmos-erp-theme .density-switch { display:none; }
+  .mmos-erp-theme .metric-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+  .mmos-erp-theme .metric-card { padding:16px; }
+  .mmos-erp-theme .metric-icon { margin-right:8px; width:32px; height:32px; }
+  .mmos-erp-theme .metric-body strong { font-size:24px; }
+  .mmos-erp-theme :is(.page-heading,.trial-page-heading,.project-page-heading,.requirements-toolbar,.init-page-heading,.todo-page-heading,.detail-screen-main) h1 { font-size:24px; }
+  .mmos-erp-theme .ant-table-content { overflow-x:auto!important; }
+  .mmos-erp-theme .ant-table-wrapper :is(.ant-table-cell-fix,.ant-table-cell-fix-right,.ant-table-cell-fix-left) { position:static!important; }
+  .mmos-erp-theme .ant-table-cell-fix::before, .mmos-erp-theme .ant-table-cell-fix::after { display:none; }
+  .mmos-erp-theme .ant-table-wrapper:has(.ant-table-content)::before { content:"左右滑动查看完整字段"; display:block; padding:8px 12px; font-size:12px; color:var(--erp-text-secondary); }
+  .mmos-erp-theme :is(.trial-list-toolbar,.project-table-toolbar,.init-list-heading,.requirements-toolbar,.detail-screen-bar,.todo-card-heading) { flex-wrap:wrap; gap:12px; }
+  .mmos-erp-theme .ant-card-head { padding-inline:16px; }
+  .mmos-erp-theme .finance-page .trial-work-card>.ant-card-body { padding:16px; }
+  .mmos-erp-theme .ant-card-head-wrapper { flex-wrap:wrap; gap:8px; }
+  .mmos-erp-theme .ant-card-extra { margin-inline-start:0; }
+  .mmos-erp-theme .breadcrumbs { font-size:12px; }
+}
+@media (prefers-reduced-motion: reduce) { .mmos-erp-theme *, .mmos-erp-theme *::before, .mmos-erp-theme *::after { animation-duration:.01ms!important; transition-duration:.01ms!important; scroll-behavior:auto!important; } }
