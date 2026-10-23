@@ -6,7 +6,6 @@ import { Bell, BriefcaseBusiness, CalendarClock, ChevronDown, CircleHelp, Clipbo
 const navigationSections = [
   {
     id: 'project', label: '项目', items: [
-      { id: 'overview', label: '经营总览', icon: LayoutDashboard },
       { id: 'requirements', label: '需求列表', icon: FileText, count: '12' },
       { id: 'projects', label: '项目主库', icon: BriefcaseBusiness },
     ],
@@ -39,11 +38,11 @@ const navigationSections = [
 ];
 
 const pageTitles = {
-  overview: '经营总览', requirements: '需求列表', projects: '项目主库', initiation: '立项申请', trial: '试标管理', quotation: '报价管理', 'output-attendance': '产出与出勤', acceptance: '验收管理',
+  overview: '工作台', requirements: '需求列表', projects: '项目主库', initiation: '立项申请', trial: '试标管理', quotation: '报价管理', 'output-attendance': '产出与出勤', acceptance: '验收管理',
   'hr-overview': '人事总览', 'people-master': '人员主库', 'people-changes': '人事变动', 'finance-customers': '客户台账', 'finance-invoices': '发票与回款', 'finance-journal': '日记账', 'finance-costs': '职位成本', 'finance-settlement': '兼职结算', 'finance-approvals': '财务审批记录', 'finance-contracts': '合同管理', 'expense-ledger': '报销台账', todos: '待办列表',
 };
 
-export function getPageTitle(id) { return pageTitles[id] || '经营总览'; }
+export function getPageTitle(id) { return pageTitles[id] || '工作台'; }
 
 function NavItem({ item, active, onNavigate }) {
   const Icon = item.icon;
@@ -69,7 +68,9 @@ export function Sidebar({ active = 'overview', role = 'PMO', mobileOpen, onNavig
     <aside className={`sidebar ${mobileOpen ? 'is-open' : ''}`}>
       <div className="brand-lockup mmos-brand-lockup"><img className="mmos-system-logo" src="/mmos-2.0-logo.svg" alt="MMOS 2.0 — MUCHEN Management OS" width="756" height="241" /><button className="icon-button mobile-close" aria-label="关闭导航" onClick={onClose}><X size={18} /></button></div>
       <div className="workspace-switcher"><span className="workspace-dot" /> 产品与经营部 <ChevronDown size={15} /></div>
-      <nav className="primary-nav" aria-label="主导航">{navigationSections.map(section => <NavigationSection key={section.id} section={section.id === 'finance' && role !== '财务' ? { ...section, items: section.items.filter(item => ['finance-customers', 'finance-costs'].includes(item.id)) } : section} active={active} open={openSections[section.id]} onToggle={toggleSection} projectOpen={projectOpen} onProjectToggle={setProjectOpen} onNavigate={onNavigate} />)}<p className="nav-caption second">系统</p><button className="nav-item"><Settings2 size={19} strokeWidth={1.8} /><span>系统设置</span></button></nav>
+      <nav className="primary-nav" aria-label="主导航">
+        <div className="nav-section"><button className={`nav-section-toggle nav-workbench ${active === 'overview' ? 'active' : ''}`} aria-current={active === 'overview' ? 'page' : undefined} onClick={() => onNavigate('overview')}><LayoutDashboard size={15} strokeWidth={1.8} /><span>工作台</span></button></div>
+        {navigationSections.map(section => <NavigationSection key={section.id} section={section.id === 'finance' && role !== '财务' ? { ...section, items: section.items.filter(item => ['finance-customers', 'finance-costs'].includes(item.id)) } : section} active={active} open={openSections[section.id]} onToggle={toggleSection} projectOpen={projectOpen} onProjectToggle={setProjectOpen} onNavigate={onNavigate} />)}<p className="nav-caption second">系统</p><button className="nav-item"><Settings2 size={19} strokeWidth={1.8} /><span>系统设置</span></button></nav>
       <div className="sidebar-foot"><div className="help-row"><CircleHelp size={17} /><span>需要帮助？</span></div><div className="user-card"><div className="avatar">{role === '财务' ? '赵' : role === 'PM' ? '王' : '林'}</div><div><strong>{role === '财务' ? '赵敏' : role === 'PM' ? '王然' : '林晓彤'}</strong><small>{role === '财务' ? '财务' : role === 'PM' ? '项目经理' : 'PMO 管理员'}</small></div><ChevronDown size={15} /></div></div>
     </aside>{mobileOpen && <button className="backdrop" aria-label="关闭导航" onClick={onClose} />}
   </>;
@@ -77,4 +78,4 @@ export function Sidebar({ active = 'overview', role = 'PMO', mobileOpen, onNavig
 
 export function Topbar({ onMenu, onTodo, active, todoCount = 0 }) { const { density, setDensity } = useDisplayDensity(); return <header className="topbar"><button className="icon-button mobile-menu" aria-label="打开导航" onClick={onMenu}><Menu size={21} /></button><div className="breadcrumbs"><span>MMOS 2.0</span><i>/</i><strong>{getPageTitle(active)}</strong></div><div className="top-actions"><Segmented className="density-switch" aria-label="显示密度" size="small" value={density} onChange={setDensity} options={[{ value: 'compact', label: '紧凑' }, { value: 'comfortable', label: '舒适' }]} /><label className="search-box"><Search size={17} /><input placeholder="搜索项目、需求或编号" aria-label="搜索项目、需求或编号" /></label><button className="icon-button notification" aria-label="通知"><Bell size={19} /><b>3</b></button><button className="todo-button" aria-label="进入待办列表" onClick={onTodo}><ListTodo size={17} /><span>待办</span>{todoCount > 0 && <b className="todo-count">{todoCount}</b>}</button><div className="top-avatar">林</div></div></header>; }
 
-export function PlaceholderPage({ title }) { return <div className="placeholder-page"><p className="eyebrow">MMOS 2.0 · 工作区</p><h1>{title}</h1><p>该界面将在经营总览确认后独立开发，当前仅保留导航入口。</p></div>; }
+export function PlaceholderPage({ title }) { return <div className="placeholder-page"><p className="eyebrow">MMOS 2.0 · 工作区</p><h1>{title}</h1><p>该界面将在工作台确认后独立开发，当前仅保留导航入口。</p></div>; }

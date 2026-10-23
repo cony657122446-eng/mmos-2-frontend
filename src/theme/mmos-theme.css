@@ -31,6 +31,8 @@
 .mmos-erp-theme .primary-nav { padding-top: 16px; scrollbar-width: thin; scrollbar-color: #D8E5F6 transparent; }
 .mmos-erp-theme .nav-section-toggle { color: var(--erp-text-secondary); font-size: 12px; letter-spacing: .02em; height: 34px; }
 .mmos-erp-theme .nav-section-toggle:hover { background: var(--erp-primary-soft); color: var(--erp-text); }
+.mmos-erp-theme .nav-workbench { border-radius: 8px; }
+.mmos-erp-theme .nav-workbench.active { background: var(--erp-nav-gradient); color: white; box-shadow: 0 3px 8px rgba(53,121,246,.12); }
 .mmos-erp-theme .nav-item { color: var(--erp-text); font-size: 13px; height: 42px; border-radius: 8px; }
 .mmos-erp-theme :is(.nav-item:hover, .subnav button:hover) { color: var(--erp-link); background: var(--erp-primary-soft); }
 .mmos-erp-theme :is(.nav-item.active, .subnav button.active) { background: var(--erp-nav-gradient); color: white; box-shadow: 0 3px 8px rgba(53,121,246,.12); }
