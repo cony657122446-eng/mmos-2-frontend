@@ -91,10 +91,10 @@ export function quoteHandling(record) {
   return '已进入项目进行中';
 }
 
-export function isQuoteTodo(record, role) {
+export function isQuoteTodo(record, role, actor = PM_NAME) {
   const stage = quoteStage(record);
   if (role === 'PMO') return stage === '待审核' || stage === '待签单';
-  return record.pm === PM_NAME && (stage === '待报价' || (record.status === '已立项' && Boolean(record.plan)));
+  return role === 'PM' && record.pm === actor && (stage === '待报价' || (record.status === '已立项' && Boolean(record.plan)));
 }
 
 function loadQuotes() {

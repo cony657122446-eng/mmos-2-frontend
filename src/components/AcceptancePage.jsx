@@ -30,7 +30,7 @@ function loadRecords() { try { const value = localStorage.getItem(ACCEPTANCE_KEY
 function persistRecords(next) { localStorage.setItem(ACCEPTANCE_KEY, JSON.stringify(next)); window.dispatchEvent(new CustomEvent('mmos:acceptance-updated', { detail: next })); }
 function nextAcceptanceNo(records) { const max = records.reduce((result, item) => Math.max(result, Number(String(item.acceptanceNo || '').slice(-6)) || 0), 1427); return `2609${String(max + 1).padStart(8, '0')}`; }
 function viewOf(record) { if (record.applyStatus === '待审核' || record.applyStatus === '待处理') return '待审核'; if (record.applyStatus === '已驳回' || record.applyStatus === '已撤回') return '待修改'; return '已通过'; }
-export function isAcceptanceTodo(record, role) { if (role === 'PMO') return record.applyStatus === '待审核' || record.applyStatus === '待处理'; return record.pm === PM_NAME && ['已驳回', '已撤回'].includes(record.applyStatus); }
+export function isAcceptanceTodo(record, role, actor = PM_NAME) { if (role === 'PMO') return record.applyStatus === '待审核' || record.applyStatus === '待处理'; return role === 'PM' && record.pm === actor && ['已驳回', '已撤回'].includes(record.applyStatus); }
 function canEdit(record, role) { return ['已驳回', '已撤回'].includes(record.applyStatus) && (role === 'PMO' || record.pm === PM_NAME); }
 function hasOpen() { return false; }
 

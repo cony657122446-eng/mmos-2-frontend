@@ -1,0 +1,23 @@
+.finance-dashboard { color:var(--erp-text); }
+.finance-dashboard-heading { display:flex; justify-content:space-between; align-items:center; gap:16px; margin:8px 0 20px; }
+.finance-dashboard h1 { font-size:26px; margin:4px 0; }
+.finance-dashboard-heading p { color:var(--erp-text-secondary); margin:4px 0; }
+.finance-filters .ant-card-body { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; padding:16px; }
+.finance-range,.finance-summary-note { font-size:12px; color:var(--erp-text-secondary); }
+.finance-summary-note { margin:12px 0; }
+.finance-cash-kpis { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin:14px 0; }
+.finance-cash-kpis .ant-card-body { padding:18px; }
+.finance-kpi-title { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:13px; }
+.finance-kpi-title > span { display:grid; place-items:center; width:36px; height:36px; border-radius:10px; background:#F4F8FE; font-size:19px; }
+.finance-cash-kpis strong { display:block; font-size:25px; letter-spacing:-.6px; color:#101D33; margin:10px 0 18px; font-variant-numeric:tabular-nums; }
+.finance-kpi-footer { display:flex; align-items:center; flex-wrap:wrap; gap:4px; justify-content:space-between; border-top:1px solid #EEF3FA; padding-top:10px; font-size:11px; color:#72839F; }
+.finance-chart { min-width:0; margin-bottom:16px; }
+.finance-chart h2 { font-size:16px; margin:0; }
+.finance-chart .ant-card-head-title p { font-size:12px; color:#72839F; margin:4px 0 0; white-space:normal; }
+.finance-chart .ant-card-body { padding:14px; }
+.finance-visual-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+.finance-dashboard .ant-card { border:1px solid #E7EFF9; box-shadow:0 6px 24px rgba(34,91,170,.045); border-radius:16px; }
+.finance-journal-table { min-width:0; }
+@media(max-width:1400px) { .finance-dashboard-heading { flex-wrap:wrap; } }
+@media(max-width:1100px) { .finance-cash-kpis { grid-template-columns:minmax(0,1fr); } }
+@media(max-width:760px) { .finance-cash-kpis,.finance-visual-grid { grid-template-columns:minmax(0,1fr); } .finance-dashboard-heading { align-items:flex-start; } .finance-chart .ant-card-head-wrapper { flex-wrap:wrap; gap:8px; } .finance-home-tabs .ant-tabs-content-holder,.finance-dashboard { min-width:0; } }
