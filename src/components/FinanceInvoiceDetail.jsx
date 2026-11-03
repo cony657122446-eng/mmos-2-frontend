@@ -68,7 +68,8 @@ function derivedValues(row, customers) {
   const stage = invoiceStage(row);
   const net = amount == null || rate == null ? null : Math.round(amount / (1 + rate) * 100) / 100;
   const customer = findFinanceCustomer(row, customers);
-  const due = row.invoiceNo && row.invoiceDate && customer?.term != null ? asDate(row.invoiceDate)?.add(Number(customer.term), 'day') : null;
+  const term = stage === '已回款' && Object.hasOwn(row, 'paidTermSnapshot') ? row.paidTermSnapshot : customer?.term;
+  const due = row.invoiceNo && row.invoiceDate && term != null ? asDate(row.invoiceDate)?.add(Number(term), 'day') : null;
   const overdue = due && stage !== '已回款' ? Math.max(0, dayjs().startOf('day').diff(due.startOf('day'), 'day')) : 0;
   return {
     stage,
