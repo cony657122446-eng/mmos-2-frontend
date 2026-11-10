@@ -1,4 +1,5 @@
 import React from 'react';
+import { displayText } from '../data/displayText';
 import { Alert, Button, DatePicker, Form, Input, InputNumber, Select, Space, Tabs, Tag } from 'antd';
 import dayjs from 'dayjs';
 import { findFinanceCustomer } from '../data/financeCustomers';
@@ -36,7 +37,11 @@ function money(value) {
   return number == null ? '待补充' : `¥ ${number.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function shown(value) { return value == null || value === '' ? '—' : String(value); }
+function shown(value) { return value == null || value === '' ? '—' : displayText(String(value)); }
+
+function EvidenceInput({ value, ...props }) {
+  return <Input.TextArea {...props} value={displayText(value)} autoSize={{ minRows: 2, maxRows: 5 }} />;
+}
 
 function initialValues(row, customers) {
   const values = Object.fromEntries(rawFields.map(name => [name, row?.[name]]));
@@ -89,7 +94,7 @@ const groups = [
   { key: 'project', title: '项目与验收', fields: [
     { name: 'recordNo', label: '记录编号' }, { name: 'parent', label: '父记录' },
     { name: 'projectName', label: '项目名称' }, { name: 'mainProject', label: '主项目名称' },
-    { name: 'projectNo', label: '内部项目编号 ID' }, { name: 'customerKey', label: '客户', kind: 'customer' },
+    { name: 'projectNo', label: '内部项目编号 ID' }, { name: 'customerKey', label: '公司主体', kind: 'customer' },
     { name: 'acceptanceType', label: '验收类型', kind: 'acceptanceType' },
     { name: 'start', label: '项目开始时间', kind: 'date' }, { name: 'end', label: '项目结束时间', kind: 'date' },
     { name: 'volume', label: '数据量', kind: 'number', precision: 6 },
@@ -151,6 +156,7 @@ export function FinanceInvoiceDetail({ row, customers = [], editable = false, ed
   if (initial.customerKey && !customerOptions.some(item => item.value === initial.customerKey)) customerOptions.push({ value: initial.customerKey, label: row.customer || initial.customerKey });
 
   const control = field => {
+    if (field.name === 'evidence') return <EvidenceInput />;
     if (field.kind === 'attachment') return <FinanceFile />;
     if (field.kind === 'date') return <DatePicker placeholder="选择日期" style={{ width: '100%' }} />;
     if (field.kind === 'customer') return <Select allowClear showSearch optionFilterProp="label" options={customerOptions} onChange={chooseCustomer} placeholder={row.customer || '请选择客户'} />;

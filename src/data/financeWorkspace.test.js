@@ -4,11 +4,11 @@ import { combineInvoices, issueInvoice, registerReceipt, registerJournal, comple
 import { applyCostBatch, quarterMonths } from './financeCosts.js';
 import { CONTRACT_FIELDS, mergeContracts } from './financeContracts.js';
 const invoice = (key, amount, overrides = {}) => ({ key, recordNo: key, acceptanceNo: key, projectNo: `project-${key}`, projectName: `项目${key}`, customerKey: 'c1', customer: '客户', acceptanceAmount: amount, taxIncluded: amount, received: 0, invoiceNo: '', ...overrides });
-const initial = () => ({ revision: 0, customers: [], invoices: [invoice('a', 6000), invoice('b', 4000)], journal: [], settlements: [], approvals: [], costs: [], contracts: [], audit: [] });
+const initial = () => ({ revision: 0, customers: [{ key: 'c1', name: '客户', fullName: '客户测试公司', taxNo: 'TEST-TAX', active: true }], invoices: [invoice('a', 6000), invoice('b', 4000)], journal: [], settlements: [], approvals: [], costs: [], contracts: [], audit: [] });
 const issued = () => { const state = combineInvoices(initial(), ['a', 'b']); return issueInvoice(state, state.invoices[0], { invoiceNo: 'F1', invoiceDate: '2026-10-21', taxIncluded: 10000, voucher: 'test.pdf', voucherUrl: 'data:application/pdf;base64,AA==' }); };
 test('同客户跨项目合票保留各验收金额；独立票号重复拒绝且开票不产生日记账', () => {
   const state = issued(); assert.equal(state.journal.length, 0); assert.deepEqual(state.invoices.map(row => row.taxIncluded), [6000, 4000]);
-  const wrong = initial(); wrong.invoices[1].customerKey = 'c2'; assert.throws(() => combineInvoices(wrong, ['a', 'b']), /同一客户/);
+  const wrong = initial(); wrong.invoices[1].customerKey = 'c2'; assert.throws(() => combineInvoices(wrong, ['a', 'b']), /同一公司主体/);
   const duplicate = { ...state, invoices: [...state.invoices, invoice('c', 1)] };
   assert.throws(() => issueInvoice(duplicate, duplicate.invoices[2], { invoiceNo: 'F1', invoiceDate: '2026-10-21', taxIncluded: 1, voucher: 'f.pdf', voucherUrl: 'data:application/pdf;base64,AA==' }), /重复/);
 });

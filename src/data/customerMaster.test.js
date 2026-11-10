@@ -17,7 +17,7 @@ test('财务和增长部共用主库；选填可空，编号与入库时间保�
     const state = save(base(), role, 'customer.save', 'c1', customerValues);
     assert.equal(state.customers[0].code, 'KH-001'); assert.equal(state.customers[0].createdAt, '2026-08-01'); assert.equal(state.customers[0].term, null);
     assert.equal(projectCustomerView(state, '财务').customers[0].name, '字节新名');
-    assert.throws(() => save(state, role, 'customer.save', 'c1', { ...customerValues, name: '腾讯' }), /重复/);
+    assert.throws(() => save(state, role, 'customer.save', 'c1', { ...customerValues, taxNo: ' 00456 ' }), /重复/);
     assert.throws(() => save(state, role, 'customer.save', 'c1', { ...customerValues, taxNo: '  ' }), /必填/);
   }
 });
@@ -39,7 +39,7 @@ test('只投影允许的字段；财务及PMO/PM无法从联系人、历史和�
     const view = projectCustomerView(state, role);
     assert.equal(view.visits, undefined); assert.equal(view.recentVisits, undefined); assert.ok(!JSON.stringify(view).includes('私密拜访内容'));
     assert.ok(!JSON.stringify(view).includes('旧对接人'));
-    if (role !== '财务') assert.deepEqual(Object.keys(view.customers[0]), ['key', 'code', 'name', 'fullName']);
+    if (role !== '财务') assert.deepEqual(Object.keys(view.customers[0]), ['key', 'groupKey', 'code', 'name', 'fullName']);
     assert.throws(() => save(state, role, 'visit.save', null, { contactKey: 'cm-demo-a', date: '2026-11-03', content: '拒绝' }), /仅增长部/);
   }
   assert.throws(() => projectCustomerView(state, '无权限'), /权限/);
@@ -54,9 +54,9 @@ test('客户删除检查所有关联；只删除无关联客户；停用不删�
 });
 test('联系人同客户去首尾空白唯一；跨客户同名合法；改名保留稳定ID', () => {
   let state = base();
-  assert.throws(() => save(state, GROWTH, 'contact.save', null, { customerKey: 'c1', name: ' 模拟陈悦 ' }), /重复/);
-  state = save(state, GROWTH, 'contact.save', 'cm-demo-a', { customerKey: 'c1', name: '模拟陈悦更正' });
-  assert.equal(state.customerRelations.contacts.find(row => row.key === 'cm-demo-a').name, '模拟陈悦更正');
+  assert.throws(() => save(state, GROWTH, 'contact.save', null, { customerKey: 'c1', name: ' 陈悦 ' }), /重复/);
+  state = save(state, GROWTH, 'contact.save', 'cm-demo-a', { customerKey: 'c1', name: '陈悦更正' });
+  assert.equal(state.customerRelations.contacts.find(row => row.key === 'cm-demo-a').name, '陈悦更正');
   assert.ok(state.customerRelations.links.ZJ20260910922.customerPoc.includes('cm-demo-a'));
   assert.throws(() => save(state, '财务', 'contact.save', null, { customerKey: 'c1', name: '新增' }), /仅增长部/);
 });
@@ -102,24 +102,24 @@ test('拜访按次保存，同日不合并；更正不新增；DDL为文本；�
   assert.throws(() => save(state, GROWTH, 'visit.save', null, { ...values, date: '2026-02-30' }), /有效/);
   assert.throws(() => save(state, GROWTH, 'visit.save', null, { ...values, content: '  ' }), /有效/);
 });
-test('过期修订拒绝，保存失败保留原记录；模拟种子不重复恢复删除的数据', () => {
+test('过期修订拒绝，保存失败保留原记录；种子不重复恢复删除的数据', () => {
   const state = base(); state.revision = 4; storage.set('mmos.finance.ledger.v1', JSON.stringify(state));
   assert.throws(() => commitCustomerCommand('财务', 3, { type: 'customer.save', key: 'c1', values: customerValues }), /数据已变化/);
   assert.equal(JSON.parse(storage.get('mmos.finance.ledger.v1')).customers[0].name, '字节');
   const deleted = save(state, '财务', 'customer.delete', 'cm-demo-empty'); assert.equal(seedCustomerMaster(deleted), deleted);
-  const originalSet = localStorage.setItem; localStorage.setItem = () => { throw new Error('模拟空间不足'); };
+  const originalSet = localStorage.setItem; localStorage.setItem = () => { throw new Error('空间不足'); };
   assert.throws(() => commitCustomerCommand('财务', 4, { type: 'customer.save', key: 'c1', values: customerValues }), /空间不足/);
   localStorage.setItem = originalSet; assert.equal(JSON.parse(storage.get('mmos.finance.ledger.v1')).customers[0].name, '字节'); storage.clear();
 });
 test('立项四字段允许空或三人，生效姓名快照固定；换客户不沿用旧联系人', () => {
   storage.set('mmos.finance.ledger.v1', JSON.stringify(base()));
-  const approved = prepareApplicationCustomers({ customer: '字节', customerPoc: ['cm-demo-a', 'cm-demo-b', 'cm-demo-c'], customerPm: ['cm-demo-a'] }, true);
+  const approved = prepareApplicationCustomers({ customer: '字节', subjectKey: 'c1', customerPoc: ['cm-demo-a', 'cm-demo-b', 'cm-demo-c'], customerPm: ['cm-demo-a'] }, true);
   assert.equal(approved.customerLinks.customerPoc.length, 3);
-  assert.equal(approved.customerContactSnapshot.customerPoc[0].name, '模拟陈悦');
+  assert.equal(approved.customerContactSnapshot.customerPoc[0].name, '陈悦');
   const changed = save(base(), GROWTH, 'contact.save', 'cm-demo-a', { name: '已更名', customerKey: 'c1' });
   storage.set('mmos.finance.ledger.v1', JSON.stringify(changed));
-  assert.equal(approved.customerContactSnapshot.customerPoc[0].name, '模拟陈悦');
-  assert.throws(() => prepareApplicationCustomers({ ...approved, customer: '腾讯' }), /不属于当前客户/);
+  assert.equal(approved.customerContactSnapshot.customerPoc[0].name, '陈悦');
+  assert.throws(() => prepareApplicationCustomers({ ...approved, customer: '腾讯', groupKey: 'group-c2' }), /不属于当前客户/);
   assert.deepEqual(prepareApplicationCustomers({ customer: '字节' }).customerPoc, []);
   storage.clear();
 });

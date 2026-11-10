@@ -17,8 +17,8 @@ export function normalizeInvoice(row, customers) {
     acceptanceAmount: invoiceNumber(row.acceptanceAmount) ?? amount, taxIncluded: amount,
     taxRate: typeof row.taxRate === 'string' && row.taxRate.endsWith('%') ? Number(row.taxRate.slice(0, -1)) / 100 : row.taxRate,
     received: invoiceNumber(row.received) ?? (row.invoiceNo || row.invoiceStatus === '已开票' ? null : 0), voucher: row.voucher || row.invoiceFile || '',
-    evidence: row.evidence || row.evidenceName, category: row.invoiceNo ? row.category || customer?.invoiceItemName || '' : customer?.invoiceItemName || '',
-    ...(!row.invoiceNo ? { payer: customer?.fullName || '', taxNo: customer?.taxNo || '', taxCode: customer?.taxCode || '' } : {}),
+    evidence: row.evidence || row.evidenceName, category: row.invoiceNo || row.legacyConfirmed || row.invoiceStatus === '已开票' ? row.category || customer?.invoiceItemName || '' : customer?.invoiceItemName || '',
+    ...(!row.invoiceNo && !row.legacyConfirmed && row.invoiceStatus !== '已开票' ? { payer: customer?.fullName || '', taxNo: customer?.taxNo || '', taxCode: customer?.taxCode || '' } : {}),
     start: row.start || row.period?.split(' 至 ')[0], end: row.end || row.period?.split(' 至 ')[1],
   };
 }
@@ -65,21 +65,28 @@ export function groupInvoice(invoices, row) {
   return { ...row, key: row.groupId || row.key, projectName: members.length > 1 ? `${row.customer} · 合并开票（${members.length} 条验收）` : row.projectName,
     taxIncluded: groupTotal(members), acceptanceAmount: groupTotal(members), received: round(members.reduce((sum, item) => sum + Number(item.received || 0), 0)), members };
 }
+export function invoiceTasks(invoices) {
+  const seen = new Set();
+  return invoices.filter(row => { const key = row.groupId || row.key; if (seen.has(key)) return false; seen.add(key); return true; }).map(row => groupInvoice(invoices, row));
+}
 export function combineInvoices(state, keys) {
   const rows = state.invoices.filter(row => keys.includes(row.key));
   if (!rows.length || rows.length !== keys.length) throw new Error('请选择有效验收记录');
   if (rows.some(row => row.invoiceNo || row.legacyConfirmed || row.groupId)) throw new Error('仅可合并尚未开票且未合并的验收记录');
-  if (!rows[0].customerKey || rows.some(row => row.customerKey !== rows[0].customerKey)) throw new Error('仅同一客户的验收可以合并开票');
+  if (!rows[0].customerKey || rows.some(row => row.customerKey !== rows[0].customerKey)) throw new Error('仅同一公司主体的验收可以合并开票');
   if (rows.some(row => invoiceNumber(row.acceptanceAmount) == null)) throw new Error('验收金额缺失，请先核对来源');
   const groupId = uid('group');
   return { ...state, invoices: state.invoices.map(row => keys.includes(row.key) ? { ...row, groupId } : row) };
 }
 export function issueInvoice(state, row, values) {
   const group = groupInvoice(state.invoices, row);
+  const subject = findFinanceCustomer(row, state.customers);
+  if (!subject || subject.active === false) throw new Error('公司主体未核实或已停用，不能确认新开票');
+  if (group.members.some(item => (item.subjectKey || item.customerKey) !== subject.key)) throw new Error('开票组主体不一致，请核对');
   if (group.members.some(item => item.invoiceNo || item.legacyConfirmed)) throw new Error('本次记录已经开票，请核对历史资料');
   if (!values.invoiceNo?.trim() || !values.invoiceDate || !values.voucher || !values.voucherUrl) throw new Error('请填写发票号码、日期并上传发票文件');
   if (invoiceNumber(values.taxIncluded) == null || round(values.taxIncluded) !== group.taxIncluded) throw new Error('整票金额必须等于关联验收金额合计');
-  const next = state.invoices.map(item => group.members.some(member => member.key === item.key) ? { ...item, invoiceNo: values.invoiceNo.trim(), invoiceDate: values.invoiceDate, voucher: values.voucher, voucherUrl: values.voucherUrl, taxIncluded: item.acceptanceAmount } : item);
+  const next = state.invoices.map(item => group.members.some(member => member.key === item.key) ? { ...item, subjectKey: subject.key, groupKey: subject.groupKey, subjectName: subject.name, invoiceSubjectSnapshot: { subjectKey: subject.key, groupKey: subject.groupKey, subjectName: subject.name, fullName: item.payer, taxNo: item.taxNo, invoiceItemName: item.category, taxCode: item.taxCode }, invoiceNo: values.invoiceNo.trim(), invoiceDate: values.invoiceDate, voucher: values.voucher, voucherUrl: values.voucherUrl, taxIncluded: item.acceptanceAmount } : item);
   for (const item of next.filter(item => group.members.some(member => member.key === item.key))) {
     const error = validateFinanceInvoice(item, next); if (error) throw new Error(error);
   }

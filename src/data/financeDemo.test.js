@@ -5,7 +5,7 @@ import { validateFinanceInvoice } from './financeLedger.js';
 import { settlementError, completeSettlements, registerReceipt, approvalPayment } from './financeWorkspace.js';
 import { CONTRACT_FIELDS } from './financeContracts.js';
 const fixture = () => addFinanceDemo({ customers: [], invoices: [], journal: [], approvals: [], settlements: [], costs: [], contracts: [] }, new Date('2026-10-21T00:00:00Z'));
-test('模拟数据保留原记录、重复载入不覆盖用户修改或恢复删除项', () => {
+test('数据保留原记录、重复载入不覆盖用户修改或恢复删除项', () => {
   const old = { key: 'existing', note: '用户记录' };
   const state = addFinanceDemo({ invoices: [old] });
   assert.equal(state.invoices[0], old);
@@ -13,7 +13,7 @@ test('模拟数据保留原记录、重复载入不覆盖用户修改或恢复�
   assert.equal(addFinanceDemo(state), state);
   assert.equal(state.costs.length, 8);
 });
-test('模拟发票有效，合票增量回款与已有收入一致', () => {
+test('发票有效，合票增量回款与已有收入一致', () => {
   const state = fixture();
   for (const row of state.invoices) assert.equal(validateFinanceInvoice(row, state.invoices), '');
   const row = state.invoices[6], other = state.invoices[7];
@@ -21,7 +21,7 @@ test('模拟发票有效，合票增量回款与已有收入一致', () => {
   assert.equal(next.journal.at(-1).income, 3000);
   assert.ok(state.invoices[3].voucherUrl.startsWith('data:application/pdf;base64,'));
 });
-test('模拟结算包含可操作、已完成和异常，付款关联可追踪', () => {
+test('结算包含可操作、已完成和异常，付款关联可追踪', () => {
   const state = fixture();
   assert.equal(settlementError(state.settlements[0], state), '');
   assert.match(settlementError(state.settlements[3], state), /金额不符/);

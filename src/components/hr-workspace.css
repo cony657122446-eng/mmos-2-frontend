@@ -30,3 +30,40 @@
 .hr-detail-actions { margin-top:16px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }.hr-detail-progress { background:#f8fbff; margin-bottom:20px; }.hr-output-history h2 { font-size:15px; margin:0; }.hr-output-history .ant-table { font-size:12px; }.hr-embedded .hr-table-card > .ant-card-body { padding:0; }
 @media(max-width:1100px) { .hr-stats { grid-template-columns:repeat(2,minmax(0,1fr)); }.hr-entry-grid { grid-template-columns:1fr 1fr; }.hr-toolbar-note { margin-left:0; width:100%; } }
 @media(max-width:650px) { .hr-page h1 { font-size:24px; }.hr-stats { gap:10px; }.hr-stats .ant-card-body { padding:14px; }.hr-stat-icon { right:10px; top:14px; width:28px; height:28px; font-size:15px; }.hr-stats .ant-statistic-content-value { font-size:25px; }.hr-entry-grid { grid-template-columns:1fr; }.hr-page-heading { align-items:flex-start; }.hr-identity { width:100%; justify-content:flex-start; }.hr-table-card > .ant-card-body { padding:14px 12px 4px; }.hr-filter-grid > .ant-input-affix-wrapper { width:100%; }.hr-filter-grid > .ant-select { flex:1; min-width:130px; max-width:none; }.hr-filter-grid > .ant-picker { flex:1; min-width:250px; }.hr-filter-grid .ant-btn { margin-left:0; }.hr-card-heading { flex-wrap:wrap; align-items:flex-start; }.hr-scope { gap:8px; align-items:flex-start; flex-wrap:wrap; }.hr-toolbar > .ant-input-affix-wrapper { max-width:none; }.hr-toolbar > .ant-select { width:100%; }.hr-detail { max-height:72vh; }.hr-detail .ant-descriptions-item { padding-bottom:10px; } }
+
+.hr-form-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 20px; }
+.hr-personnel-tabs { margin-top: 24px; min-width: 0; }
+.hr-change-summary { display:grid; grid-template-columns:85px minmax(0,1fr); gap:8px; margin:4px 0; line-height:1.6; overflow-wrap:anywhere; }
+.hr-change-summary > span:first-child { color:#72839f; }
+.hr-change-fields-title { margin:24px 0 14px; font-size:15px; color:#192a46; }
+.hr-personnel-tabs .ant-table-wrapper { margin-bottom: 20px; }
+.hr-personnel-tabs .ant-descriptions-item-content { overflow-wrap: anywhere; }
+@media (max-width: 640px) { .hr-form-columns { grid-template-columns: minmax(0, 1fr); } }
+.hr-mini-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin-bottom:18px; }
+.hr-mini-stats .ant-statistic-content { font-size:26px; font-weight:700; font-variant-numeric:tabular-nums; }
+.hr-contract-panel,.hr-attendance-panel,.hr-career-panel { min-width:0; width:100%; }
+.hr-contract-active > td:first-child { box-shadow:inset 3px 0 #15b88a; }
+.hr-contract-readiness { margin-top:16px; }
+.hr-contract-facts { margin-top:20px; padding:14px 16px; border-radius:10px; background:#f8fbff; border:1px solid #e7eff9; }
+.hr-contract-facts h3 { margin:0 0 10px; font-size:14px; }
+.hr-contract-facts p { margin:6px 0; font-size:13px; }
+.hr-contract-pdf { display:block; width:100%; height:65vh; border:1px solid #e7eff9; border-radius:8px; }
+.hr-inline-field { display:flex; align-items:center; gap:10px; color:#72839f; font-size:13px; }
+.hr-attendance-days.ant-btn { font-size:19px; font-weight:650; height:auto; font-variant-numeric:tabular-nums; }
+.hr-attendance-summary { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:16px; margin-bottom:20px; background:#f8fbff; border:1px solid #e7eff9; border-radius:16px; }
+.hr-attendance-panel > .ant-alert,.hr-career-panel > .ant-alert { margin-bottom:12px; }
+.hr-attendance-panel .hr-filter-grid > .ant-select { min-width:200px; max-width:420px; }
+.hr-onboarding-filters { align-items:end; }
+.hr-onboarding-filters .hr-inline-field { display:grid; gap:6px; }
+.hr-onboarding-filters .hr-inline-field > .ant-select { min-width:150px; }
+@media(max-width:800px) {
+  .hr-mini-stats { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .hr-card-heading { flex-wrap:wrap; }
+  .hr-contract-panel .ant-table-wrapper,.hr-career-panel .ant-table-wrapper { max-width:100%; }
+}
+@media(max-width:480px) {
+  .hr-mini-stats .ant-card-body { padding:14px; }
+  .hr-attendance-summary { grid-template-columns:1fr; }
+  .hr-inline-field { width:100%; }
+  .hr-onboarding-filters .hr-inline-field > .ant-select { width:100%; }
+}

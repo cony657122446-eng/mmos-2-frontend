@@ -1,3 +1,4 @@
+import { displayText } from '../data/displayText';
 import { CustomerMasterPage } from './CustomerMasterPage';
 import { addFinanceDemo } from '../data/financeDemo';
 import React from 'react';
@@ -14,12 +15,12 @@ import { loadRoleWorkspace, saveWorkspace, financeAllowed, customerProjection, g
 import { invoiceNumber } from '../data/invoiceFields';
 
 const money = value => invoiceNumber(value) == null ? '待补充' : `¥ ${Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const names = { 'finance-customers': ['客户主库', '统一维护客户资料与开票信息，已开票资料保留历史快照。'], 'finance-invoices': ['发票与回款', '按验收明细跟踪开票与回款，支持同客户合票及手动分配。'], 'finance-journal': ['日记账', '只登记实际收支，按关联金额同步业务结果。'], 'finance-costs': ['职位成本', '按季度集中维护，按职位和月份生效。'], 'finance-settlement': ['兼职结算', '飞书审批与结算资料归集，完成确认后自动记入实际支出。'], 'finance-approvals': ['财务审批记录', '审批事实、成本归集与实际付款分别保留。'], 'finance-contracts': ['合同管理', '合同源台账只读查询，保留原字段与附件引用。'] };
+const names = { 'finance-customers': ['客户主库', '统一维护客户资料与开票信息，已开票资料保留历史快照。'], 'finance-invoices': ['发票与回款', '按验收明细跟踪开票与回款，支持同公司主体合票及手动分配。'], 'finance-journal': ['日记账', '只登记实际收支，按关联金额同步业务结果。'], 'finance-costs': ['职位成本', '按季度集中维护，按职位和月份生效。'], 'finance-settlement': ['兼职结算', '飞书审批与结算资料归集，完成确认后自动记入实际支出。'], 'finance-approvals': ['财务审批记录', '审批事实、成本归集与实际付款分别保留。'], 'finance-contracts': ['公司合同管理', '合同源台账只读查询，保留原字段与附件引用。'] };
 const status = value => <Tag color={['已回款', '已开票'].includes(value) ? 'success' : value === '部分回款' ? 'warning' : 'processing'}>{value}</Tag>;
 export function FinancePage({ page = 'finance-customers', role = '财务', onRoleChange }) {
   if (page === 'finance-customers') return <CustomerMasterPage role={role} onRoleChange={onRoleChange} />;
   const [title, subtitle] = names[page] || names['finance-customers'];
-  return <div className="trial-page finance-page"><div className="trial-page-heading"><div><p className="eyebrow">财务工作区</p><h1>{title}</h1><p className="subtitle">{subtitle}</p></div><div className="trial-role-switch"><ShieldCheck size={14} /><span>演示身份</span><Select aria-label="财务演示身份" value={role} onChange={onRoleChange} options={[{ value: '财务', label: '财务 · 赵敏' }, { value: 'PMO', label: 'PMO · 林晓彤' }, { value: 'PM', label: 'PM · 王然' }]} /></div></div>
+  return <div className="trial-page finance-page"><div className="trial-page-heading"><div><p className="eyebrow">财务工作区</p><h1>{title}</h1><p className="subtitle">{subtitle}</p></div><div className="trial-role-switch"><ShieldCheck size={14} /><span>当前身份</span><Select aria-label="财务当前身份" value={role} onChange={onRoleChange} options={[{ value: '财务', label: '财务 · 赵敏' }, { value: 'PMO', label: 'PMO · 林晓彤' }, { value: 'PM', label: 'PM · 王然' }]} /></div></div>
     {financeAllowed(role, page) ? <FinanceWorkspace key={`${page}:${role}`} page={page} role={role} /> : <Card><Empty description="本页仅财务可查看。客户三字段和本月职位成本可在对应页面查看。" /></Card>}
   </div>;
 }
@@ -32,8 +33,8 @@ function FinanceWorkspace({ page, role }) {
     if (role !== '财务') return;
     const current = loadRoleWorkspace(role, dayjs().format('YYYY-MM'));
     if (current.demoDataVersion) return;
-    try { setState(saveWorkspace(current, addFinanceDemo(current), '初始化模拟测试数据')); }
-    catch (error) { message.error(error.message || '测试数据初始化失败'); }
+    try { setState(saveWorkspace(current, addFinanceDemo(current), '初始化业务记录')); }
+    catch (error) { message.error(error.message || '记录初始化失败'); }
   }, [role]);
   React.useEffect(() => { const sync = () => { setState(loadRoleWorkspace(role, dayjs().format('YYYY-MM'))); setEditing(null); setInvoiceEditing(false); }; window.addEventListener('storage', sync); return () => window.removeEventListener('storage', sync); }, [role]);
   const commit = (next, action = '更新财务台账') => {
@@ -48,14 +49,19 @@ function FinanceWorkspace({ page, role }) {
     if (detail.groupId) for (const key of ['received', 'arrivedAt', 'invoiceNo', 'invoiceDate', 'taxIncluded', 'voucher', 'voucherUrl']) next[key] = detail[key];
     if (next.invoiceNo) { next.legacyConfirmed = false; next.migrationIssue = ''; }
     const error = validateFinanceInvoice(next, invoices); if (error) throw new Error(error);
-    return { ...state, invoices: invoices.map(row => row.key === next.key ? next : row), journal: reconcileInvoiceReceipt(journal, detail, next, next.arrivedAt) };
+    let updated = { ...state, invoices: invoices.map(row => row.key === next.key ? next : row) };
+    if (!detail.invoiceNo && !detail.legacyConfirmed && detail.invoiceStatus !== '已开票' && next.invoiceNo) {
+      const pending = { ...next, invoiceNo: '', invoiceDate: '', voucher: '', voucherUrl: '' };
+      updated = issueInvoice({ ...state, invoices: invoices.map(row => row.key === pending.key ? pending : row) }, pending, next);
+    }
+    return { ...updated, journal: reconcileInvoiceReceipt(journal, detail, next, next.arrivedAt) };
   }, '详情修改已保存') && setInvoiceEditing(false);
   const tabs = ['全部', '待开票', '待回款', '部分回款', '已回款'];
   const matching = invoices.filter(row => !query || [row.recordNo, row.projectName, row.projectNo, row.customer, row.invoiceNo].some(value => String(value || '').includes(query.trim())));
   const invoiceColumns = [
     { title: '记录 / 系统验收编号', dataIndex: 'recordNo', width: 155 },
     { title: '业务项目', width: 210, render: (_, row) => <><Button type="link" onClick={() => openInvoice(row)}>{row.projectName}</Button>{row.groupId && <div><Tag>合票 · {groupInvoice(invoices, row).members.length} 条验收</Tag></div>}</> },
-    { title: '项目编号', dataIndex: 'projectNo', width: 170 }, { title: '客户', dataIndex: 'customer', width: 100 }, { title: 'PM', dataIndex: 'pm', width: 90 },
+    { title: '项目编号', dataIndex: 'projectNo', width: 170 }, { title: '客户', dataIndex: 'customer', width: 100 }, { title: '公司主体', width: 200, render: (_, row) => row.invoiceSubjectSnapshot?.fullName || state.customers.find(subject => subject.key === (row.subjectKey || row.customerKey))?.fullName || '待核对' }, { title: 'PM', dataIndex: 'pm', width: 90 },
     { title: '本条验收 / 发票金额', dataIndex: 'taxIncluded', width: 160, align: 'right', render: money },
     { title: '发票号码', dataIndex: 'invoiceNo', width: 170, render: (value, row) => value || (row.legacyConfirmed ? '历史资料待核对' : '待开票') },
     { title: '开票状态', width: 100, render: (_, row) => status(row.invoiceNo || row.legacyConfirmed ? '已开票' : '待开票') },
@@ -74,13 +80,13 @@ function FinanceWorkspace({ page, role }) {
     const rows = journal.filter(row => !row.opening && (row.income > 0 || row.expense > 0));
     let balance = state.openingBalance ?? null;
     const withBalance = rows.map(row => { if (balance != null) balance = round(balance + row.income - row.expense); return { ...row, balance }; });
-    body = journalKey ? <JournalDetail entry={withBalance.find(row => row.key === journalKey)} invoices={invoices} settlements={[]} approvals={state.approvals} onBack={() => setJournalKey('')} onLink={(entry, target, amount) => act(() => registerJournal(state, { allocations: [{ target: target.key, type: entry.income > 0 ? '开票' : target.type, name: target.name, amount }] }, entry.key), '追加关联已保存')} /> : <Card variant="borderless" className="trial-work-card"><Alert type="info" showIcon title="期初余额与正式记账顺序待确认" description="当前仅展示实际收入、支出及业务关联，不将演示期初值作为真实余额。" /><div className="trial-list-toolbar"><span>{rows.length} 条实际收支</span><Space><Button onClick={() => setEditing({ type: 'journal', direction: '收入' })}>登记收入</Button><Button type="primary" onClick={() => setEditing({ type: 'journal', direction: '支出' })}>登记支出</Button></Space></div><Table rowKey="key" dataSource={withBalance} scroll={{ x: 1300 }} columns={[{ title: '日期', dataIndex: 'date' }, { title: '摘要', dataIndex: 'summary' }, { title: '收付款人', dataIndex: 'payer' }, { title: '收入', dataIndex: 'income', align: 'right', render: money }, { title: '支出', dataIndex: 'expense', align: 'right', render: money }, { title: '余额', dataIndex: 'balance', align: 'right', render: value => value == null ? '期初待确认' : money(value) }, { title: '关联条数', render: (_, row) => row.allocations?.length || 0 }, { title: '未关联金额', align: 'right', render: (_, row) => money(round((row.income || row.expense) - (row.allocations || []).reduce((sum, link) => sum + Number(link.amount), 0))) }, { title: '操作', render: (_, row) => <Button type="link" onClick={() => setJournalKey(row.key)}>详情 / 关联</Button> }]} /></Card>;
+    body = journalKey ? <JournalDetail entry={withBalance.find(row => row.key === journalKey)} invoices={invoices} settlements={[]} approvals={state.approvals} onBack={() => setJournalKey('')} onLink={(entry, target, amount) => act(() => registerJournal(state, { allocations: [{ target: target.key, type: entry.income > 0 ? '开票' : target.type, name: target.name, amount }] }, entry.key), '追加关联已保存')} /> : <Card variant="borderless" className="trial-work-card"><Alert type="info" showIcon title="期初余额与正式记账顺序待确认" description="按实际收入、支出及业务关联统计，期初余额待核对。" /><div className="trial-list-toolbar"><span>{rows.length} 条实际收支</span><Space><Button onClick={() => setEditing({ type: 'journal', direction: '收入' })}>登记收入</Button><Button type="primary" onClick={() => setEditing({ type: 'journal', direction: '支出' })}>登记支出</Button></Space></div><Table rowKey="key" dataSource={withBalance} scroll={{ x: 1300 }} columns={[{ title: '日期', dataIndex: 'date' }, { title: '摘要', dataIndex: 'summary' }, { title: '收付款人', dataIndex: 'payer' }, { title: '收入', dataIndex: 'income', align: 'right', render: money }, { title: '支出', dataIndex: 'expense', align: 'right', render: money }, { title: '余额', dataIndex: 'balance', align: 'right', render: value => value == null ? '期初待确认' : money(value) }, { title: '关联条数', render: (_, row) => row.allocations?.length || 0 }, { title: '未关联金额', align: 'right', render: (_, row) => money(round((row.income || row.expense) - (row.allocations || []).reduce((sum, link) => sum + Number(link.amount), 0))) }, { title: '操作', render: (_, row) => <Button type="link" onClick={() => setJournalKey(row.key)}>详情 / 关联</Button> }]} /></Card>;
   }
-  return <><div className="finance-prototype-note"><span>{state.demoDataVersion ? '模拟测试数据已载入 · 仅供本地交互，非真实业务数据' : '本地交互预览 · 现有开票与日记账含历史演示数据'}</span>{editable && <Button size="small" type="link" onClick={() => setAuditOpen(true)}>操作记录</Button>}</div>{body}
+  return <><div className="finance-prototype-note">{editable && <Button size="small" type="link" onClick={() => setAuditOpen(true)}>操作记录</Button>}</div>{body}
     {editing?.type === 'invoice' && <IssueBox group={groupInvoice(invoices, editing.row)} onCancel={() => setEditing(null)} onSave={values => act(() => issueInvoice(state, editing.row, values), '开票已确认，未新增资金收支')} />}
     {editing?.type === 'receipt' && <ReceiptBox group={groupInvoice(invoices, editing.row)} onCancel={() => setEditing(null)} onSave={values => act(() => registerReceipt(state, editing.row, values.received, values.arrivedAt?.format('YYYY-MM-DD'), values.allocations, values.note), '回款与日记账已同步')} />}
     {editable && <JournalBox open={editing?.type === 'journal'} direction={editing?.direction} invoices={invoices} approvals={state.approvals} onCancel={() => setEditing(null)} onSave={values => act(() => registerJournal(state, { ...values, date: values.date.format('YYYY-MM-DD'), income: values.direction === '收入' ? Number(values.amount) : 0, expense: values.direction === '支出' ? Number(values.amount) : 0 }), '实际收支及关联已保存')} />}
-    <Modal title="本地操作记录" open={auditOpen} width={900} onCancel={() => setAuditOpen(false)} footer={<Button onClick={() => setAuditOpen(false)}>关闭</Button>}><Table rowKey="key" expandable={{ expandedRowRender: row => <pre style={{ whiteSpace: 'pre-wrap', maxHeight: 300, overflow: 'auto' }}>{JSON.stringify(row.changes || [], null, 2)}</pre> }} dataSource={editable ? [...state.audit].reverse() : []} columns={[{ title: '时间', dataIndex: 'time', render: value => dayjs(value).format('YYYY-MM-DD HH:mm:ss') }, { title: '操作人', dataIndex: 'actor' }, { title: '操作', dataIndex: 'action' }, { title: '结果', dataIndex: 'result' }, { title: '版本变化', render: (_, row) => `${row.before} → ${row.after}` }]} /></Modal>
+    <Modal title="操作记录" open={auditOpen} width={900} onCancel={() => setAuditOpen(false)} footer={<Button onClick={() => setAuditOpen(false)}>关闭</Button>}><Table rowKey="key" expandable={{ expandedRowRender: row => <pre style={{ whiteSpace: 'pre-wrap', maxHeight: 300, overflow: 'auto' }}>{displayText(JSON.stringify(row.changes || [], null, 2))}</pre> }} dataSource={editable ? [...state.audit].reverse() : []} columns={[{ title: '时间', dataIndex: 'time', render: value => dayjs(value).format('YYYY-MM-DD HH:mm:ss') }, { title: '操作人', dataIndex: 'actor' }, { title: '操作', dataIndex: 'action' }, { title: '结果', dataIndex: 'result' }, { title: '版本变化', render: (_, row) => `${row.before} → ${row.after}` }]} /></Modal>
   </>;
 }
 function IssueBox({ group, onCancel, onSave }) {

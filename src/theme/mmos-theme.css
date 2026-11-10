@@ -31,8 +31,8 @@
 .mmos-erp-theme .primary-nav { padding-top: 16px; scrollbar-width: thin; scrollbar-color: #D8E5F6 transparent; }
 .mmos-erp-theme .nav-section-toggle { color: var(--erp-text-secondary); font-size: 12px; letter-spacing: .02em; height: 34px; }
 .mmos-erp-theme .nav-section-toggle:hover { background: var(--erp-primary-soft); color: var(--erp-text); }
-.mmos-erp-theme .nav-workbench { border-radius: 8px; }
-.mmos-erp-theme .nav-workbench.active { background: var(--erp-nav-gradient); color: white; box-shadow: 0 3px 8px rgba(53,121,246,.12); }
+.mmos-erp-theme .nav-page { border-radius: 8px; }
+.mmos-erp-theme .nav-page.active { background: var(--erp-nav-gradient); color: white; box-shadow: 0 3px 8px rgba(53,121,246,.12); }
 .mmos-erp-theme .nav-item { color: var(--erp-text); font-size: 13px; height: 42px; border-radius: 8px; }
 .mmos-erp-theme :is(.nav-item:hover, .subnav button:hover) { color: var(--erp-link); background: var(--erp-primary-soft); }
 .mmos-erp-theme :is(.nav-item.active, .subnav button.active) { background: var(--erp-nav-gradient); color: white; box-shadow: 0 3px 8px rgba(53,121,246,.12); }
@@ -50,6 +50,7 @@
 .mmos-erp-theme .breadcrumbs { color: var(--erp-text-secondary); white-space: nowrap; }
 .mmos-erp-theme .breadcrumbs strong { color: var(--erp-text); }
 .mmos-erp-theme .top-actions { gap: 12px; }
+.mmos-erp-theme .demo-role-select { width: 140px; }
 .mmos-erp-theme .search-box { width: clamp(160px, 18vw, 246px); height: 36px; border-color: var(--erp-border); color: var(--erp-text-secondary); }
 .mmos-erp-theme .search-box input { font-size: 12px; }
 .mmos-erp-theme .search-box:focus-within { border-color: var(--erp-primary); box-shadow: 0 0 0 3px #3579F619; }
@@ -190,6 +191,12 @@
   .mmos-erp-theme .finance-page .trial-work-card>.ant-card-body { padding:16px; }
   .mmos-erp-theme .ant-card-head-wrapper { flex-wrap:wrap; gap:8px; }
   .mmos-erp-theme .ant-card-extra { margin-inline-start:0; }
-  .mmos-erp-theme .breadcrumbs { font-size:12px; }
+  .mmos-erp-theme .breadcrumbs { font-size:12px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+  .mmos-erp-theme .breadcrumbs>span, .mmos-erp-theme .breadcrumbs>i { display:none; }
+  .mmos-erp-theme .top-actions, .mmos-erp-theme .mobile-menu { flex-shrink:0; }
+}
+@media (max-width: 420px) {
+  .mmos-erp-theme .demo-role-select { width:112px; }
+  .mmos-erp-theme .top-actions { gap:4px; }
 }
 @media (prefers-reduced-motion: reduce) { .mmos-erp-theme *, .mmos-erp-theme *::before, .mmos-erp-theme *::after { animation-duration:.01ms!important; transition-duration:.01ms!important; scroll-behavior:auto!important; } }

@@ -21,7 +21,11 @@ export function saveFinanceCustomers(customers) {
 }
 
 export function findFinanceCustomer(record, customers) {
+  if (Object.hasOwn(record, 'subjectKey')) return customers.find(item => item.key === record.subjectKey);
   if (record.customerKey) return customers.find(item => item.key === record.customerKey);
   const matches = customers.filter(item => item.name === record.customer || item.previousNames?.includes(record.customer));
-  return matches.length === 1 ? matches[0] : undefined;
+  if (matches.length !== 1) return undefined;
+  const subject = matches[0];
+  if (subject.groupKey && customers.filter(item => item.groupKey === subject.groupKey).length > 1) return undefined;
+  return subject;
 }

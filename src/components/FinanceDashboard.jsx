@@ -37,7 +37,7 @@ function FinanceCashDashboard({ onRoleChange, onNavigate }) {
       const raw = localStorage.getItem(FINANCE_LEDGER_STORAGE_KEY);
       if (raw) { const stored = JSON.parse(raw); if (!Array.isArray(stored?.journal) || !Array.isArray(stored?.invoices)) throw new Error('日记账本地数据格式异常，请保留数据并核对'); }
       const current = loadRoleWorkspace('财务', shanghaiToday().slice(0, 7));
-      const next = current.demoDataVersion ? current : saveWorkspace(current, addFinanceDemo(current), '初始化模拟测试数据');
+      const next = current.demoDataVersion ? current : saveWorkspace(current, addFinanceDemo(current), '初始化业务记录');
       setState(next); setError('');
     } catch (e) { setError(e.message); }
   }, []);
@@ -68,7 +68,7 @@ function FinanceCashDashboard({ onRoleChange, onNavigate }) {
   const topPayers = data.incomePayers.slice(0, 5);
   const ranking = { ...base, grid: { ...base.grid, left: 0 }, xAxis: valueAxis, yAxis: { type: 'category', inverse: true, data: topPayers.map(p => p.name), axisLabel: { width: 110, overflow: 'truncate' } }, series: [{ name: '实际收入', type: 'bar', barMaxWidth: 22, data: topPayers.map(p => p.value) }] };
   return <div className="finance-dashboard">
-    <header className="finance-dashboard-heading"><div><p className="eyebrow">MMOS 2.0 · 资金收支</p><h1>财务工作台</h1><p>从日记账查看实际收支、业务关联和资金流向。</p></div><Space wrap><Tag color="blue">本地模拟数据</Tag><Select aria-label="财务工作台身份" value="财务" onChange={onRoleChange} options={[{ value: '财务', label: '财务 · 赵敏' }, { value: 'PMO', label: 'PMO · 林晓彤' }, { value: 'PM', label: 'PM · 王然' }]} /><Button onClick={() => setHelp(true)}>统计口径</Button><Button type="primary" onClick={() => onNavigate('finance-journal')}>打开日记账</Button></Space></header>
+    <header className="finance-dashboard-heading"><div><p className="eyebrow">MMOS 2.0 · 资金收支</p><h1>财务工作台</h1><p>从日记账查看实际收支、业务关联和资金流向。</p></div><Space wrap><Select aria-label="财务工作台身份" value="财务" onChange={onRoleChange} options={[{ value: '财务', label: '财务 · 赵敏' }, { value: 'PMO', label: 'PMO · 林晓彤' }, { value: 'PM', label: 'PM · 王然' }]} /><Button onClick={() => setHelp(true)}>统计口径</Button><Button type="primary" onClick={() => onNavigate('finance-journal')}>打开日记账</Button></Space></header>
     {error && <Alert type="error" showIcon title="日记账读取失败" description={`${error}。当前数据可能不是最新状态。`} action={<Button onClick={reload}>重试</Button>} />}
     {!state ? !error && <Spin description="正在读取日记账"><div style={{ height: 200 }} /></Spin> : <>
       <Card className="finance-filters"><Space wrap><Segmented aria-label="财务统计期间" value={period} onChange={value => { setPeriod(value); setDrill(null); }} options={[{ value: 'month', label: '本月' }, { value: 'recent', label: '近3个月' }, { value: 'year', label: '本年' }, { value: 'all', label: '全部' }, { value: 'custom', label: '自定义' }]} />{period === 'custom' && <DatePicker.RangePicker aria-label="财务自定义日期" value={custom} allowClear={false} onChange={value => value && setCustom(value)} />}<Select aria-label="收付款人筛选" value={payer} showSearch optionFilterProp="label" onChange={value => { setPayer(value); setDrill(null); }} style={{ width: 200 }} options={[{ value: 'all', label: '全部收付款人' }, ...[...new Set((state?.journal || []).filter(r => !r.opening).map(r => r.payer).filter(Boolean))].map(value => ({ value, label: value }))]} /></Space><div className="finance-range">{range ? range.join(' 至 ') : '全部已登记日期'} · {data.totals.count} 条有效收支</div></Card>
@@ -95,7 +95,7 @@ function FinanceCashDashboard({ onRoleChange, onNavigate }) {
       <p>仅使用本地日记账已登记的实际收入、实际支出及业务关联。开票金额、审批金额、周报产值不作为实际收支。期初尚未确认，暂不展示账户余额。</p>
       <p>期间按日记账日期筛选；本月、近3个月、本年截至北京时间今天。「全部」包括所有已登记日期。趋势只展示有记录的时间点，无记录不代表已核实零业务。</p>
       <p>同一笔交易只计入收支一次；分类图按每条关联分配金额拆分，剩余金额列为未关联。关联超额或无效时整笔分类列为待核对，仍保留有效实际收支。</p>
-      <p>参考飞书「月开票报表」「营收支出月报」的指标、趋势和明细布局，未导入或修改飞书记录。本页为本地模拟预览，非实时财务报表。</p>
+      <p>按日记账记录汇总收支，支持按期间、收付款人查看趋势和明细。</p>
       {!!data.excluded.length && <ul>{data.excluded.map((row, i) => <li key={row.key || i}>{row.summary || row.key || '未命名记录'}：{row.reason}</li>)}</ul>}
     </Modal>
   </div>;

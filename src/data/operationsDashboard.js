@@ -67,7 +67,7 @@ export function createPreview() {
         // Explicit sample calendar and source-date allocations; replace with actual upstream records in production.
         workDates: datesBetween(start, end).filter(d => ![0, 6].includes(dayjs(d).day())), updatedAt: `${start} 11:00:00`, revision: 0, audit: [], calcStatus: 'ready' };
       row.result = calculateWeek(row);
-      if (i === 9 && w === 7) { row.calcStatus = 'failed'; row.calcError = '模拟上游计算服务暂不可用；保留上次成功结果'; }
+      if (i === 9 && w === 7) { row.calcStatus = 'failed'; row.calcError = '上游计算服务暂不可用；保留上次成功结果'; }
       rows.push(row);
     });
   }
@@ -102,7 +102,7 @@ export function supplementComparisonDemo(state) {
       weekId: `DEMO-MOM-${p.id.split('-').at(-1)}-${start}`, start, end, submittedAt: `${start} 10:20:00`, updatedAt: `${start} 11:00:00`,
       checked, autoVolume: checked, price: 2.12, pricing: '计件', internalCost: cost * .7, externalCost: cost * .3, subsidy: 0, extra: 0,
       confirmed: true, calcStatus: 'ready', revision: 0, audit: [], annotation: '', plan: '', staffPlan: '',
-      deviation: `${p.demoLabel}模拟场景，供环比交互测试使用。`, measure: '模拟周报已完成核对，可进入详情修改并观察环比变化。', note: '新增完整历史模拟数据；非真实业务记录。',
+      deviation: `${p.demoLabel}期间经营记录。`, measure: '周报已完成核对。', note: '历史周报记录。',
       workDates: datesBetween(start, end).filter(d => ![0, 6].includes(dayjs(d).day())) };
     return { ...row, result: calculateWeek(row) };
   }));

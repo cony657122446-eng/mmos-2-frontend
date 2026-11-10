@@ -6,9 +6,10 @@ import { ArrowRight, CheckCircle2, ClipboardCheck, FileText, ShieldCheck, UserRo
 import { getInitiationApplications, INITIATION_STORAGE_KEY } from './InitiationPage';
 import { isQuoteTodo, QUOTE_STORAGE_KEY, quoteHandling, quoteStage } from './QuotationPage';
 import { ACCEPTANCE_KEY, isAcceptanceTodo } from './AcceptancePage';
-import { loadInvoices } from './InvoiceLedgerPage';
+import { loadInvoiceTasks } from './InvoiceLedgerPage';
 import { CUSTOMER_STORAGE_KEY, CUSTOMER_UPDATED_EVENT, loadFinanceCustomers } from '../data/financeCustomers';
 import { getInvoiceFields } from '../data/invoiceFields';
+import { isByteCustomer, prepareApplicationCustomers } from '../data/customerMaster';
 import { scopeManagerTodos } from '../data/todoScope';
 import { useOperationsPreview } from '../hooks/useOperationsPreview';
 
@@ -28,7 +29,7 @@ export function TodoPage({ onNavigate, role = 'PMO', onRoleChange }) {
   const [applications, setApplications] = React.useState(getInitiationApplications);
   const [quotes, setQuotes] = React.useState(loadQuotes);
   const [acceptance, setAcceptance] = React.useState(() => { try { return JSON.parse(localStorage.getItem(ACCEPTANCE_KEY) || '[]'); } catch { return []; } });
-  const [invoices, setInvoices] = React.useState(loadInvoices);
+  const [invoices, setInvoices] = React.useState(loadInvoiceTasks);
   const [customers, setCustomers] = React.useState(loadFinanceCustomers);
   React.useEffect(() => {
     const syncCustomers = () => setCustomers(loadFinanceCustomers());
@@ -41,7 +42,7 @@ export function TodoPage({ onNavigate, role = 'PMO', onRoleChange }) {
     const sync = event => { if (event.detail) setApplications(event.detail); };
     const syncQuotes = event => { if (event.detail) setQuotes(event.detail); };
     const syncAcceptance = event => { if (event.detail) setAcceptance(event.detail); };
-    const syncInvoices = event => { if (event.detail) setInvoices(event.detail); };
+    const syncInvoices = () => setInvoices(loadInvoiceTasks());
     window.addEventListener('mmos:initiation-updated', sync);
     window.addEventListener('mmos:quotation-updated', syncQuotes);
     window.addEventListener('mmos:acceptance-updated', syncAcceptance);
@@ -55,25 +56,42 @@ export function TodoPage({ onNavigate, role = 'PMO', onRoleChange }) {
   const rows = role === 'PMO' && !managerView ? reviewRows : finance ? [] : pmRows;
   const quoteRows = finance ? [] : managerView ? scopeManagerTodos(quotes.filter(item => isQuoteTodo(item, 'PM', item.pm)), role, managerScope) : quotes.filter(item => isQuoteTodo(item, role));
   const managerOptions = [...new Set([...(operationsState?.projects || []).map(p => p.pm), ...applications.map(r => r.creator), ...quotes.map(r => r.pm), ...acceptance.map(r => r.pm)].filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-CN'));
-  const invoiceRows = finance ? invoices.filter(item => item.invoiceStatus === '待开票').map(item => ({ ...item, invoiceFields: getInvoiceFields(item, customers, acceptance) })) : [];
+  const invoiceRows = finance ? invoices.filter(item => item.invoiceStatus === '待开票').map(item => ({
+    ...item,
+    invoiceSections: (item.members.length > 1 ? item.members : [item]).map(member => ({
+      ...member,
+      invoiceFields: getInvoiceFields({ ...member, amountValue: member.taxIncluded }, customers, acceptance),
+    })),
+  })) : [];
   const approveQuote = record => {
-    const stamp = '2026-09-28 11:20';
-    const next = quotes.map(item => item.key === record.key ? { ...item, review: '通过', updatedAt: stamp, activity: [`${stamp} · PMO 从待办审核通过，等待登记字节客户确认或签单`, ...(item.activity || [])] } : item);
+    const stamp = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Shanghai' });
+    const next = quotes.map(item => item.key === record.key ? { ...item, status: '待启动', review: '通过', updatedAt: stamp, activity: [`${stamp} · PMO 从待办审核通过，${isByteCustomer(item) ? '待签单并补齐双表链接' : '待补齐双表链接'}`, ...(item.activity || [])] } : item);
     writeQuotes(next);
-    setQuotes(next);
+    setQuotes(loadQuotes());
     message.success('报价审核通过');
   };
   const approve = record => {
-    const next = applications.map(item => item.key === record.key ? {
-      ...item,
-      status: '审核通过',
-      reason: 'PMO审核通过，已自动进入试标管理',
-      updatedAt: '2026-09-21 10:20',
-      activity: [`2026-09-21 10:20 · PMO从待办列表审核通过，项目状态变更为试标中`, ...(item.activity || [])],
-    } : item);
-    writeApplications(next);
-    setApplications(next);
-    message.success('审核通过，项目已自动进入试标管理');
+    try {
+      const current = getInitiationApplications();
+      const application = current.find(item => item.key === record.key);
+      if (role !== 'PMO' || application?.status !== '待 PMO 审核') {
+        throw new Error('申请状态或权限已变化，请重新读取后处理');
+      }
+      const prepared = prepareApplicationCustomers(application, true);
+      const stamp = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Shanghai' });
+      const next = current.map(item => item.key === record.key ? {
+        ...prepared,
+        status: '审核通过',
+        reason: 'PMO审核通过，已进入试标管理',
+        updatedAt: stamp,
+        activity: [`${stamp} · PMO从待办列表审核通过，项目进入试标中`, ...(item.activity || [])],
+      } : item);
+      writeApplications(next);
+      setApplications(next);
+      message.success('审核通过，项目已进入试标管理');
+    } catch (error) {
+      message.error(error.message);
+    }
   };
   const columns = [
     { title: '项目编号', dataIndex: 'projectNo', width: 140, render: value => <span className="todo-project-no">{value}</span> },
@@ -86,9 +104,9 @@ export function TodoPage({ onNavigate, role = 'PMO', onRoleChange }) {
   ];
   const acceptanceRows = finance ? [] : managerView ? scopeManagerTodos(acceptance.filter(item => isAcceptanceTodo(item, 'PM', item.pm)), role, managerScope) : acceptance.filter(item => isAcceptanceTodo(item, role));
   const invoiceColumns = [
-    { title: '业务项目', dataIndex: 'projectName', width: 190, render: (value, record) => <div className="invoice-todo-project"><span className="todo-name-icon"><FileText size={14} /></span><div><strong>{value}</strong><p>{record.projectNo}</p><p>客户：{record.customer}</p><p>系统验收编号<br />{record.acceptanceNo}</p></div></div> },
-    { title: '开票信息', key: 'invoiceFields', render: (_, record) => <dl className="invoice-todo-fields">{record.invoiceFields.map(field => <div key={field.key} className={`invoice-todo-field invoice-todo-field-${field.key}`}><dt>{field.key === 'itemName' ? '项目名称（开票）' : field.label}</dt><dd><Tooltip title={field.hint}><Typography.Text tabIndex={field.hint ? 0 : undefined} copyable={['待补充', '待识别'].includes(field.value) ? false : { tooltips: ['复制', '已复制'] }}>{field.value}</Typography.Text></Tooltip></dd></div>)}</dl> },
-    { title: '状态', dataIndex: 'invoiceStatus', width: 90, render: value => <Tag color="processing">{value}</Tag> },
+    { title: '业务项目', dataIndex: 'projectName', width: 220, render: (value, record) => <div className="invoice-todo-project"><span className="todo-name-icon"><FileText size={14} /></span><div><strong>{value}</strong><p>客户 {record.customer}</p><p>公司主体 {record.subjectName || record.payer}</p>{record.members.map(member => <p key={member.key}>{member.projectNo}<br />{member.acceptanceNo}</p>)}{record.members.length > 1 && <strong>合计 ¥ {Number(record.amountValue).toLocaleString('zh-CN', { minimumFractionDigits: 2 })}</strong>}</div></div> },
+    { title: '开票信息', key: 'invoiceFields', render: (_, record) => record.invoiceSections.map(section => <section key={section.key}>{record.members.length > 1 && <strong>{section.projectName} · {section.acceptanceNo}</strong>}<dl className="invoice-todo-fields">{section.invoiceFields.map(field => <div key={field.key} className={`invoice-todo-field invoice-todo-field-${field.key}`}><dt>{field.key === 'itemName' ? '项目名称（开票）' : field.label}</dt><dd><Tooltip title={field.hint}><Typography.Text tabIndex={field.hint ? 0 : undefined} copyable={['待补充', '待识别'].includes(field.value) ? false : { tooltips: ['复制', '已复制'] }}>{field.value}</Typography.Text></Tooltip></dd></div>)}</dl></section>) },
+    { title: '状态', dataIndex: 'invoiceStatus', width: 120, render: (value, record) => <Space direction="vertical"><Tag color="processing">{value}</Tag>{record.subjectActive === false && <Tag color="warning">主体已停用</Tag>}</Space> },
   ];
   const acceptanceColumns = [
     ...(managerView ? [{ title: '负责PM', dataIndex: 'pm', width: 90 }] : []),
@@ -112,9 +130,9 @@ export function TodoPage({ onNavigate, role = 'PMO', onRoleChange }) {
     </div>
     <Table rowKey="key" columns={invoiceColumns} dataSource={invoiceRows} pagination={false} locale={{ emptyText: <Empty description="当前没有待开票记录" /> }} />
   </Card>;
-  if (finance) return <div className="todo-page"><div className="todo-page-heading"><div><p className="eyebrow">MMOS 2.0 · 工作提醒</p><h1>待办列表</h1><p className="subtitle">财务只接收开票待办，不接收立项、报价和验收待办。</p></div><div className="todo-role-chip"><UserRound size={14} /> 演示身份 <Select size="small" value={role} onChange={onRoleChange} options={[{ value: 'PMO', label: 'PMO · 林晓彤' }, { value: 'PM', label: 'PM · 王然' }, { value: '财务', label: '财务 · 赵敏' }]} /></div></div><div className="todo-stat-row"><Card bordered={false}><div className="todo-stat"><span className="todo-stat-icon"><ClipboardCheck size={17} /></span><span><small>待开票</small><strong>{invoiceRows.length}</strong></span></div></Card></div>{financeTodo}</div>;
+  if (finance) return <div className="todo-page"><div className="todo-page-heading"><div><p className="eyebrow">MMOS 2.0 · 工作提醒</p><h1>待办列表</h1><p className="subtitle">财务只接收开票待办，不接收立项、报价和验收待办。</p></div><div className="todo-role-chip"><UserRound size={14} /> 当前身份 <Select size="small" value={role} onChange={onRoleChange} options={[{ value: 'PMO', label: 'PMO · 林晓彤' }, { value: 'PM', label: 'PM · 王然' }, { value: '财务', label: '财务 · 赵敏' }]} /></div></div><div className="todo-stat-row"><Card bordered={false}><div className="todo-stat"><span className="todo-stat-icon"><ClipboardCheck size={17} /></span><span><small>待开票</small><strong>{invoiceRows.length}</strong></span></div></Card></div>{financeTodo}</div>;
   const taskCards = <><HrAnomalyTodos role={role} onNavigate={onNavigate}/><div className="todo-stat-row"><Card bordered={false}><div className="todo-stat"><span className="todo-stat-icon"><ClipboardCheck size={17} /></span><span><small>{isPmo ? '待审核立项申请' : managerView ? '经理待办申请' : '我的待办申请'}</small><strong>{rows.length}</strong></span></div></Card><Card bordered={false}><div className="todo-stat"><span className="todo-stat-icon blue"><ShieldCheck size={17} /></span><span><small>处理权限</small><strong>{role === 'PMO' ? 'PMO' : 'PM'}</strong></span></div></Card></div><OperationsTodoCard key={`${role}-${managerScope}`} role={role} manager={managerScope} onNavigate={onNavigate} /><Card bordered={false} className="todo-work-card"><div className="todo-card-heading"><div><h2>{isPmo ? '立项申请待审核' : managerView ? '经理立项待办' : '我的项目待办'}</h2><p>{isPmo ? '可从列表直接通过，也可以进入立项申请详情查看完整字段后处理。' : '审核不通过的申请需要修改后重新提交，草稿可以继续填写。'}</p></div><Tag color={rows.length ? 'processing' : 'default'}>{rows.length ? `${rows.length} 条待处理` : '暂无待处理'}</Tag></div><Table rowKey="key" columns={columns} dataSource={rows} pagination={{ pageSize: 8, showSizeChanger: false }} scroll={{ x: 900 }} locale={{ emptyText: <Empty description={isPmo ? '当前没有待审核的立项申请' : '当前没有需要处理的项目待办'} /> }} /></Card><Card variant="borderless" className="todo-work-card"><div className="todo-card-heading"><div><h2>报价待办</h2><p>{isPmo ? '待审核的报价可以直接通过。退回和字节签单需要进入详情填写。' : '退回的报价需要修改后重新提交；已立项且有项目计划的项目需要开始执行。'}</p></div><Tag color={quoteRows.length ? 'processing' : 'default'}>{quoteRows.length ? `${quoteRows.length} 条待处理` : '暂无待处理'}</Tag></div><Table rowKey="key" columns={quoteColumns} dataSource={quoteRows} pagination={false} scroll={{ x: 760 }} locale={{ emptyText: <Empty description="当前没有报价待办" /> }} /></Card><Card variant="borderless" className="todo-work-card"><div className="todo-card-heading"><div><h2>验收待办</h2><p>{isPmo ? '待审核的验收申请进入详情后通过或驳回。驳回必须填写原因。' : '被驳回或撤回的验收申请需要修改后重新提交，编号保持不变。'}</p></div><Tag color={acceptanceRows.length ? 'processing' : 'default'}>{acceptanceRows.length ? `${acceptanceRows.length} 条待处理` : '暂无待处理'}</Tag></div><Table rowKey="key" columns={acceptanceColumns} dataSource={acceptanceRows} pagination={false} scroll={{ x: 680 }} locale={{ emptyText: <Empty description="当前没有验收待办" /> }} /></Card></>;
-  return <div className="todo-page"><div className="todo-page-heading"><div><p className="eyebrow">MMOS 2.0 · 工作提醒</p><h1>待办列表</h1><p className="subtitle">{role === 'PMO' ? '我的待办集中处理PMO事项，项目经理待办列表支持按负责人查看。' : '这里显示本人项目申请与经营周报待核对事项。'}</p></div><div className="todo-role-chip"><UserRound size={14} /> 演示身份 <Select size="small" value={role} onChange={onRoleChange} options={[{ value: 'PMO', label: 'PMO · 林晓彤' }, { value: 'PM', label: 'PM · 王然' }, { value: '财务', label: '财务 · 赵敏' }]} /></div></div>{role === 'PMO' ? <Tabs activeKey={activeTab} onChange={setActiveTab} destroyOnHidden items={[
+  return <div className="todo-page"><div className="todo-page-heading"><div><p className="eyebrow">MMOS 2.0 · 工作提醒</p><h1>待办列表</h1><p className="subtitle">{role === 'PMO' ? '我的待办集中处理PMO事项，项目经理待办列表支持按负责人查看。' : '这里显示本人项目申请与经营周报待核对事项。'}</p></div><div className="todo-role-chip"><UserRound size={14} /> 当前身份 <Select size="small" value={role} onChange={onRoleChange} options={[{ value: 'PMO', label: 'PMO · 林晓彤' }, { value: 'PM', label: 'PM · 王然' }, { value: '财务', label: '财务 · 赵敏' }]} /></div></div>{role === 'PMO' ? <Tabs activeKey={activeTab} onChange={setActiveTab} destroyOnHidden items={[
     { key: 'mine', label: '我的待办', children: activeTab === 'mine' ? taskCards : null },
     { key: 'managers', label: '项目经理待办列表', children: activeTab === 'managers' ? <>
       <Card size="small" className="todo-manager-filter" style={{ marginBottom: 16 }}><Space wrap><span>项目经理</span><Select aria-label="待办项目经理筛选" value={manager} onChange={setManager} showSearch optionFilterProp="label" style={{ width: 200 }} options={[{ value: 'all', label: '全部项目经理' }, ...managerOptions.map(value => ({ value, label: value }))]} /><span>统一筛选下方各类待办，操作身份仍为PMO。</span></Space></Card>

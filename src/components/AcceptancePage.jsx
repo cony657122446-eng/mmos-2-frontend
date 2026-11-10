@@ -2,7 +2,11 @@ import React from 'react';
 import { Button, Card, DatePicker, Empty, Form, Input, InputNumber, Modal, Select, Space, Table, Tabs, Tag, Upload, message } from 'antd';
 import { CheckCircle2, FileText, Plus, Search, ShieldCheck, Undo2 } from 'lucide-react';
 import dayjs from 'dayjs';
-import { createInvoice, requestCombinedInvoice } from './InvoiceLedgerPage';
+import { requestCombinedInvoice } from './InvoiceLedgerPage';
+
+import { acceptanceSubjectSnapshot, customerProjects, initializeCustomerMaster } from '../data/customerMaster';
+import { loadWorkspace } from '../data/financeWorkspace';
+import { approveAcceptanceGroup } from '../data/acceptanceGroups';
 
 export const ACCEPTANCE_KEY = 'mmos.acceptance.records.v1';
 const PM_NAME = '王然';
@@ -30,7 +34,7 @@ function loadRecords() { try { const value = localStorage.getItem(ACCEPTANCE_KEY
 function persistRecords(next) { localStorage.setItem(ACCEPTANCE_KEY, JSON.stringify(next)); window.dispatchEvent(new CustomEvent('mmos:acceptance-updated', { detail: next })); }
 function nextAcceptanceNo(records) { const max = records.reduce((result, item) => Math.max(result, Number(String(item.acceptanceNo || '').slice(-6)) || 0), 1427); return `2609${String(max + 1).padStart(8, '0')}`; }
 function viewOf(record) { if (record.applyStatus === '待审核' || record.applyStatus === '待处理') return '待审核'; if (record.applyStatus === '已驳回' || record.applyStatus === '已撤回') return '待修改'; return '已通过'; }
-export function isAcceptanceTodo(record, role, actor = PM_NAME) { if (role === 'PMO') return record.applyStatus === '待审核' || record.applyStatus === '待处理'; return role === 'PM' && record.pm === actor && ['已驳回', '已撤回'].includes(record.applyStatus); }
+export function isAcceptanceTodo(record, role, actor = PM_NAME) { if (role === 'PMO') return record.applyStatus === '待审核' || record.applyStatus === '待处理' || Boolean(record.writeError); return role === 'PM' && record.pm === actor && ['已驳回', '已撤回'].includes(record.applyStatus); }
 function canEdit(record, role) { return ['已驳回', '已撤回'].includes(record.applyStatus) && (role === 'PMO' || record.pm === PM_NAME); }
 function hasOpen() { return false; }
 
@@ -76,7 +80,8 @@ function Detail({ record, draft, onClose, role, onSubmit, onApprove, onRetry, on
   if (!project) return null;
   const fields = { ...project.fields, 项目编号: project.projectNo, 项目名称: project.projectName, 项目状态: current?.projectStatus || project.status };
   return <div className="detail-screen"><div className="detail-screen-bar"><div className="detail-screen-main"><button className="detail-back" onClick={onClose}>返回列表</button><div className="detail-screen-kicker">验收管理 · {project.projectNo}</div><h1>{project.projectName}</h1></div>{current && <Tag color={applyColor[current.applyStatus]}>{current.applyStatus}</Tag>}</div>
-    <div className="trial-detail-meta"><span>客户：{project.customer}</span><span>PM：{project.pm}</span>{current?.acceptanceNo && <span>验收编号：{current.acceptanceNo}</span>}</div>
+    <div className="trial-detail-meta"><span>客户：{project.customer}</span><span>公司主体：{project.subjectSnapshot?.fullName || project.subjectName || '待确定'}</span><span>PM：{project.pm}</span>{current?.acceptanceNo && <span>验收编号：{current.acceptanceNo}</span>}</div>
+    {current?.writeError && <div className="quote-reject-box"><strong>财务待办待补推</strong><p>{current.writeError}</p></div>}
     {current?.rejectReason && <div className="quote-reject-box"><strong>驳回原因</strong><p>{current.rejectReason}</p></div>}
     <section className="trial-detail-section"><div className="trial-detail-heading"><div><p className="panel-kicker">系统带入</p><h3>项目已有字段</h3></div></div><ol className="flow-detail-fields">{detailFields.filter(label => role === '财务' || !/开票|汇款|成本|费用|利润|产值/.test(label)).map((label, index) => <li key={label}><em>{index + 1}</em><span><small>{label}</small><strong>{fields[label] || '—'}</strong></span></li>)}</ol></section>
     <section className="trial-detail-section"><div className="trial-detail-heading"><div><p className="panel-kicker">验收申请</p><h3>{current && !canEdit(current, role) ? '已锁定' : '填写后提交'}</h3></div></div>
@@ -88,8 +93,7 @@ function Detail({ record, draft, onClose, role, onSubmit, onApprove, onRetry, on
     {current && <div className="quote-drawer-actions">
       {role === 'PMO' && current.applyStatus === '待审核' && <Button danger icon={<Undo2 size={14} />} onClick={() => onReject(current)}>驳回</Button>}
       {role === 'PMO' && current.applyStatus === '待审核' && <Button type="primary" icon={<CheckCircle2 size={14} />} onClick={() => onApprove(current, false)}>审核通过</Button>}
-      {role === 'PMO' && current.applyStatus === '待审核' && <Button onClick={() => onApprove(current, true)}>模拟写入失败</Button>}
-      {role === 'PMO' && current.applyStatus === '待处理' && <Button type="primary" onClick={() => onRetry(current)}>重试写入</Button>}
+      {role === 'PMO' && (current.applyStatus === '待处理' || Boolean(current.writeError)) && <Button type="primary" onClick={() => onRetry(current)}>重试写入</Button>}
       {current.applyStatus === '待审核' && (role === 'PMO' || current.initiator === (role === 'PM' ? PM_NAME : PMO_NAME)) && <Button onClick={() => onWithdraw(current)}>撤回</Button>}
     </div>}
   </div>;
@@ -107,10 +111,11 @@ function RejectModal({ open, onCancel, onSubmit }) {
   </Modal>;
 }
 
-function CreateModal({ records, open, preset, onCancel, onCreate }) {
+function CreateModal({ records, open, preset, onCancel, onCreate, role }) {
   const [projectId, setProjectId] = React.useState(preset?.projectId);
   React.useEffect(() => { if (open) setProjectId(preset?.projectId); }, [open, preset]);
-  const options = projects.filter(item => !hasOpen(records, item.projectId));
+  initializeCustomerMaster();
+  const options = customerProjects(loadWorkspace()).filter(item => ['项目进行中', '项目暂停'].includes(item.status) && (role === 'PMO' || (role === 'PM' && item.pm === PM_NAME))).map(item => ({ ...item, projectId: item.key, fields: {} }));
   return <Modal title="选择验收项目" open={open} okText="填写验收" onCancel={onCancel} onOk={() => { const project = options.find(item => item.projectId === projectId); if (!project) { message.warning('请选择没有未完成验收的项目'); return; } onCreate(project); }}>
     <p className="modal-help-copy">只能从项目进行中或项目暂停发起。同一项目可以同时存在多条验收申请，每条使用新的验收编号。</p>
     <Select aria-label="验收项目" style={{ width: '100%' }} value={projectId} onChange={setProjectId} placeholder="选择项目" options={options.map(item => ({ value: item.projectId, label: `${item.projectNo} · ${item.projectName} · ${item.status}` }))} />
@@ -129,33 +134,58 @@ export function AcceptancePage({ role = 'PMO', onRoleChange, presetProject, onPr
   const [rejectKey, setRejectKey] = React.useState('');
   React.useEffect(() => { const sync = event => event.detail && setRecords(event.detail); window.addEventListener('mmos:acceptance-updated', sync); return () => window.removeEventListener('mmos:acceptance-updated', sync); }, []);
   React.useEffect(() => { if (!presetProject) return; setPreset(presetProject); setCreating(true); onPresetHandled?.(); }, [presetProject, onPresetHandled]);
-  const mine = records.filter(item => role === 'PMO' || item.pm === PM_NAME);
+  const mine = records.filter(item => ['PMO', '财务'].includes(role) || item.pm === PM_NAME);
   const visible = mine.filter(item => tab === 'all' || viewOf(item) === tab).filter(item => !query.trim() || [item.acceptanceNo, item.projectNo, item.projectName, item.customer, item.pm].some(value => String(value || '').includes(query.trim())));
   const selected = records.find(item => item.key === selectedKey);
   const save = (next, notice) => { persistRecords(next); setRecords(next); if (notice) message.success(notice); };
   const update = (record, patch, notice) => save(records.map(item => item.key === record.key ? { ...item, ...patch } : item), notice);
   const submit = (source, values, existing) => {
+    let subject;
+    try { subject = acceptanceSubjectSnapshot(source.projectNo, role); } catch (error) { message.error(error.message); return; }
+    if (!['PMO', 'PM'].includes(role) || (role === 'PM' && source.pm !== PM_NAME)) { message.error('无权提交此项目验收'); return; }
     const start = values.period[0].format('YYYY-MM-DD');
     const end = values.period[1].format('YYYY-MM-DD');
     const actor = role === 'PMO' ? PMO_NAME : PM_NAME;
-    const shared = { ...values, start, end, evidenceName: values.evidenceName || existing?.evidenceName || '验收依据截图', applyStatus: '待审核', projectStatus: '项目验收中', rejectReason: '', activity: [`${nowStamp()} · ${actor}${existing ? '重新提交' : '提交'}${values.type}，等待 PMO 审核`, ...(existing?.activity || [])] };
+    const shared = { ...values, ...subject, start, end, evidenceName: values.evidenceName || existing?.evidenceName || '验收依据截图', applyStatus: '待审核', projectStatus: '项目验收中', rejectReason: '', activity: [`${nowStamp()} · ${actor}${existing ? '重新提交' : '提交'}${values.type}，等待 PMO 审核`, ...(existing?.activity || [])] };
     if (existing) { update(existing, shared, '已重新提交，沿用原验收编号'); setSelectedKey(''); return; }
     const created = { key: `acc-${Date.now()}`, acceptanceNo: nextAcceptanceNo(records), projectId: source.projectId, projectNo: source.projectNo, projectName: source.projectName, customer: source.customer, pm: source.pm, initiator: actor, projectStatus: '项目验收中', invoiceStatus: '未开票', paymentStatus: '未到账', approvedAt: '', fields: source.fields, ...shared };
     save([created, ...records], '验收已提交，项目进入项目验收中');
     setDraft(null);
   };
-  const finishApproval = (record, stamp) => {
-    const finalAcceptance = record.type === '最终验收';
-    const approved = { ...record, approvedAt: stamp, projectStatus: finalAcceptance ? '项目结束' : '项目进行中' };
-    createInvoice(approved);
-    update(record, { applyStatus: '已通过', projectStatus: approved.projectStatus, invoiceStatus: '待开票', approvedAt: stamp, writeError: '', activity: [`${stamp} · 财务开票记录写入成功`, `${stamp} · PMO 审核通过，${finalAcceptance ? '项目结束' : '项目回到进行中'}，开票状态变为待开票`, ...(record.activity || [])] }, finalAcceptance ? '写入成功，项目已结束' : '写入成功，项目回到进行中');
-  };
-  const approve = (record, fail) => {
+  const pushGroup = (approvedRecords, groupId, simulateFailure = false) => {
+    const members = approvedRecords.filter(row => row.approvalGroupId === groupId);
+    let errorMessage = '';
+    try {
+      if (simulateFailure) throw new Error('财务待办写入失败');
+      requestCombinedInvoice(members);
+    } catch (error) { errorMessage = error.message; }
     const stamp = nowStamp();
-    if (fail) { update(record, { applyStatus: '待处理', approvedAt: stamp, writeError: '财务数据写入失败', activity: [`${stamp} · 财务数据写入失败，验收申请保持待处理`, ...(record.activity || [])] }, '写入失败，请重试'); return; }
-    finishApproval(record, stamp);
+    const next = approvedRecords.map(row => row.approvalGroupId === groupId ? {
+      ...row, financeSync: errorMessage ? '待补推' : '已同步', writeError: errorMessage,
+      invoiceStatus: errorMessage ? '待生成财务待办' : '待开票',
+      syncAttempts: [...(row.syncAttempts || []), { time: stamp, result: errorMessage || '成功' }],
+      activity: [`${stamp} · ${errorMessage || '财务待办已生成'}`, ...(row.activity || [])],
+    } : row);
+    save(next, errorMessage ? '' : '验收已通过，财务待办已生成');
+    if (errorMessage) message.warning(`验收已通过，财务待办待补推。${errorMessage}`);
   };
-  const retry = record => finishApproval(record, record.approvedAt || nowStamp());
+  const approveSelected = (keys, fail = false) => {
+    try {
+      initializeCustomerMaster();
+      const workspace = loadWorkspace();
+      const next = approveAcceptanceGroup(records, keys, customerProjects(workspace), workspace.customers, nowStamp(), role);
+      const groupId = next.find(row => row.key === keys[0]).approvalGroupId;
+      save(next);
+      setInvoiceSelection([]);
+      pushGroup(next, groupId, fail);
+    } catch (error) { message.error(error.message); }
+  };
+  const approve = (record, fail) => approveSelected([record.key], fail);
+  const retry = record => {
+    if (role !== 'PMO') { message.error('仅 PMO 可补推财务待办'); return; }
+    if (!record.approvalGroupId) { message.error('历史记录缺少固定组，请核对原审批结果'); return; }
+    pushGroup(records, record.approvalGroupId);
+  };
   const reject = reason => { const record = records.find(item => item.key === rejectKey); update(record, { applyStatus: '已驳回', rejectReason: reason, activity: [`${nowStamp()} · PMO 驳回：${reason}`, ...(record.activity || [])] }, '已驳回，未生成开票记录'); setRejectKey(''); };
   const withdraw = record => update(record, { applyStatus: '已撤回', activity: [`${nowStamp()} · ${role === 'PMO' ? PMO_NAME : record.initiator}撤回验收申请`, ...(record.activity || [])] }, '已撤回，项目仍处于项目验收中');
   const changePeriod = (record, period) => update(record, { start: period[0].format('YYYY-MM-DD'), end: period[1].format('YYYY-MM-DD'), activity: [`${nowStamp()} · PMO 修改验收周期`, ...(record.activity || [])] }, '验收周期已更新');
@@ -163,6 +193,7 @@ export function AcceptancePage({ role = 'PMO', onRoleChange, presetProject, onPr
   const columns = [
     { title: '验收编号', dataIndex: 'acceptanceNo', width: 140, render: value => <span className="trial-project-no">{value}</span> },
     { title: '项目名称', dataIndex: 'projectName', width: 190, render: (value, record) => <button className="trial-name-link" onClick={() => setSelectedKey(record.key)}><span className="trial-name-icon"><FileText size={14} /></span><span><strong>{value}</strong><small>{record.projectNo} · {record.customer}</small></span></button> },
+    { title: '公司主体', dataIndex: 'subjectName', width: 170, render: value => value || '历史主体待核对' },
     { title: 'PM', dataIndex: 'pm', width: 80 },
     { title: '验收类型', dataIndex: 'type', width: 100 },
     { title: '验收金额', dataIndex: 'amount', width: 100, render: value => `${value} 元` },
@@ -174,20 +205,20 @@ export function AcceptancePage({ role = 'PMO', onRoleChange, presetProject, onPr
       <Button type="link" size="small" onClick={() => setSelectedKey(record.key)}>查看</Button>
       {role === 'PMO' && record.applyStatus === '待审核' && <Button type="link" size="small" onClick={() => approve(record, false)}>通过</Button>}
       {role === 'PMO' && record.applyStatus === '待审核' && <Button danger type="link" size="small" onClick={() => setRejectKey(record.key)}>驳回</Button>}
-      {role === 'PMO' && record.applyStatus === '待处理' && <Button type="link" size="small" onClick={() => retry(record)}>重试</Button>}
+      {role === 'PMO' && (record.applyStatus === '待处理' || Boolean(record.writeError)) && <Button type="link" size="small" onClick={() => retry(record)}>重试</Button>}
       {canEdit(record, role) && <Button type="link" size="small" onClick={() => setSelectedKey(record.key)}>修改</Button>}
     </Space> },
   ];
   if (selected || draft) return <div className="trial-page acceptance-page"><Detail record={selected} draft={draft} onClose={() => { setSelectedKey(''); setDraft(null); }} role={role} onSubmit={values => submit(draft || selected, values, selected)} onApprove={approve} onRetry={retry} onReject={record => setRejectKey(record.key)} onWithdraw={withdraw} onChangePeriod={changePeriod} /><RejectModal open={Boolean(rejectKey)} onCancel={() => setRejectKey('')} onSubmit={reject} /></div>;
   return <div className="trial-page acceptance-page">
-    <div className="trial-page-heading"><div><p className="eyebrow">项目管理 · 验收管理</p><h1>验收管理</h1><p className="subtitle">从项目进行中或项目暂停发起阶段验收、最终验收。PMO 审核通过后才生成开票快照。</p></div><Space><div className="trial-role-switch"><ShieldCheck size={14} /><span>演示身份</span><Select aria-label="演示身份" size="small" value={role} onChange={onRoleChange} options={[{ value: 'PMO', label: 'PMO · 林晓彤' }, { value: 'PM', label: 'PM · 王然' }, { value: '财务', label: '财务 · 赵敏' }]} /></div><Button type="primary" icon={<Plus size={14} />} onClick={() => { setPreset(null); setCreating(true); }}>发起验收</Button></Space></div>
+    <div className="trial-page-heading"><div><p className="eyebrow">项目管理 · 验收管理</p><h1>验收管理</h1><p className="subtitle">从项目进行中或项目暂停发起阶段验收、最终验收。PMO 审核通过后才生成开票快照。</p></div><Space><div className="trial-role-switch"><ShieldCheck size={14} /><span>当前身份</span><Select aria-label="当前身份" size="small" value={role} onChange={onRoleChange} options={[{ value: 'PMO', label: 'PMO · 林晓彤' }, { value: 'PM', label: 'PM · 王然' }, { value: '财务', label: '财务 · 赵敏' }]} /></div><Button type="primary" icon={<Plus size={14} />} onClick={() => { setPreset(null); setCreating(true); }}>发起验收</Button></Space></div>
     <div className="trial-stat-grid quote-stat-grid">{['待审核', '待修改', '已通过'].map(item => <Card key={item} variant="borderless"><div><small>{item}</small><strong>{countOf(item)}</strong></div></Card>)}</div>
     <Card variant="borderless" className="trial-work-card">
-      {role === 'PMO' && <Button style={{ marginBottom: 16 }} disabled={!invoiceSelection.length} onClick={() => { try { requestCombinedInvoice(records.filter(row => invoiceSelection.includes(row.key))); setInvoiceSelection([]); message.success('开票需求已提交财务'); } catch (error) { message.error(error.message); } }}>为所选验收提出开票需求（同客户可合票）</Button>}
+      {role === 'PMO' && <Button type="primary" style={{ marginBottom: 16 }} disabled={!invoiceSelection.length} onClick={() => approveSelected(invoiceSelection)}>合并通过所选验收（同一公司主体）</Button>}
       <div className="trial-list-toolbar"><Input prefix={<Search size={15} />} allowClear value={query} onChange={event => setQuery(event.target.value)} placeholder="搜索验收编号、项目编号、项目名称、客户、PM" aria-label="搜索验收申请" /><span className="trial-permission-chip"><ShieldCheck size={13} /> {role === 'PMO' ? '全部验收申请' : '我承接项目的验收申请'}</span></div>
       <Tabs activeKey={tab} onChange={setTab} className="trial-tabs" items={[['all', '全部'], ['待审核', '待审核'], ['待修改', '待修改'], ['已通过', '已通过']].map(([key, label]) => ({ key, label: <span>{label} <em>{countOf(key === 'all' ? '' : key)}</em></span> }))} />
-      <Table rowKey="key" rowSelection={role === 'PMO' ? { selectedRowKeys: invoiceSelection, onChange: setInvoiceSelection, getCheckboxProps: row => ({ disabled: row.applyStatus !== '已通过' }) } : undefined} columns={columns} dataSource={visible} pagination={{ pageSize: 8, showSizeChanger: false }} scroll={{ x: 1360 }} locale={{ emptyText: <Empty description="暂无符合条件的验收申请" /> }} onRow={record => ({ onClick: event => { if (event.target.closest('button, a, .ant-btn')) return; setSelectedKey(record.key); } })} />
+      <Table rowKey="key" rowSelection={role === 'PMO' ? { selectedRowKeys: invoiceSelection, onChange: setInvoiceSelection, getCheckboxProps: row => ({ disabled: row.applyStatus !== '待审核' }) } : undefined} columns={columns} dataSource={visible} pagination={{ pageSize: 8, showSizeChanger: false }} scroll={{ x: 1360 }} locale={{ emptyText: <Empty description="暂无符合条件的验收申请" /> }} onRow={record => ({ onClick: event => { if (event.target.closest('button, a, .ant-btn, input, label, .ant-checkbox-wrapper, .ant-table-selection-column')) return; setSelectedKey(record.key); } })} />
     </Card>
-    <CreateModal records={records} open={creating} preset={preset} onCancel={() => setCreating(false)} onCreate={project => { setCreating(false); setDraft({ ...project, type: preset?.acceptanceType }); }} />
+    <CreateModal role={role} records={records} open={creating} preset={preset} onCancel={() => setCreating(false)} onCreate={project => { setCreating(false); setDraft({ ...project, type: preset?.acceptanceType }); }} />
   </div>;
 }

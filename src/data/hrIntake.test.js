@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { INTAKE_FIELDS, validateIntake, residentTypes, banks } from './hrIntake.js';
-const attachment = {name:'模拟材料.pdf',data:'data:application/pdf;base64,dGVzdA=='};
+const attachment = {name:'材料.pdf',data:'data:application/pdf;base64,dGVzdA=='};
 function complete(residentType=residentTypes[0],bank=banks[0]) {
   const v={residentType,bank,hasFormerName:'没有曾用名'};
-  for(const f of INTAKE_FIELDS) if(f.required&&!v[f.key]&&(!f.when||f.when(v)))v[f.key]=f.type==='file'?attachment:f.type==='date'?'2026-11-05':f.options?.[0]||'模拟值';
+  for(const f of INTAKE_FIELDS) if(f.required&&!v[f.key]&&(!f.when||f.when(v)))v[f.key]=f.type==='file'?attachment:f.type==='date'?'2026-11-05':f.options?.[0]||'值';
   return v;
 }
 test('独立入职资料不要求员工编号、候选关联或账号',()=>assert.deepEqual(validateIntake(complete()),[]));

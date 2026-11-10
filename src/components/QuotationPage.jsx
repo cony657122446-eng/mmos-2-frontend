@@ -2,6 +2,7 @@ import React from 'react';
 import { Button, Card, DatePicker, Empty, Form, Input, InputNumber, Modal, Radio, Select, Space, Table, Tabs, Tag, Upload, message } from 'antd';
 import { CheckCircle2, FileText, Play, Plus, Search, ShieldCheck, Stamp, Undo2 } from 'lucide-react';
 import dayjs from 'dayjs';
+import { applicationCustomerOptions, isByteCustomer, prepareApplicationCustomers } from '../data/customerMaster';
 
 export const QUOTE_STORAGE_KEY = 'mmos.quotation.records.v3';
 const PM_NAME = '王然';
@@ -73,12 +74,13 @@ const seedQuotes = [
   },
 ];
 
-const statusColor = { '待报价': 'warning', '报价中': 'processing', '已立项': 'cyan', '项目进行中': 'success' };
+const statusColor = { '待报价': 'warning', '报价中': 'processing', '已立项': 'cyan', '待启动': 'cyan', '项目进行中': 'success' };
 
 export function quoteStage(record) {
   if (record.status === '待报价') return '待报价';
   if (record.status === '报价中' && record.review !== '通过') return '待审核';
-  if (record.status === '报价中' && record.customer === '字节' && record.review === '通过' && !record.voucher) return '待签单';
+  if (['报价中', '待启动'].includes(record.status) && isByteCustomer(record) && record.review === '通过' && !(record.confirmResult && record.confirmTime && record.voucher)) return '待签单';
+  if (record.status === '待启动') return '待启动';
   return '报价结果';
 }
 
@@ -87,14 +89,14 @@ export function quoteHandling(record) {
   if (stage === '待报价') return '待填写';
   if (stage === '待审核') return '待审核';
   if (stage === '待签单') return '待签单';
-  if (record.status === '已立项') return '待开始执行';
+  if (['已立项', '待启动'].includes(record.status)) return '待补齐启动条件';
   return '已进入项目进行中';
 }
 
 export function isQuoteTodo(record, role, actor = PM_NAME) {
   const stage = quoteStage(record);
   if (role === 'PMO') return stage === '待审核' || stage === '待签单';
-  return role === 'PM' && record.pm === actor && (stage === '待报价' || (record.status === '已立项' && Boolean(record.plan)));
+  return role === 'PM' && record.pm === actor && (stage === '待报价' || ['已立项', '待启动'].includes(record.status));
 }
 
 function loadQuotes() {
@@ -112,7 +114,6 @@ function persistQuotes(next) {
 }
 
 function nowStamp() { return dayjs().format('YYYY-MM-DD HH:mm'); }
-function hasPlan(record) { return Boolean(String(record.plan || '').trim()); }
 function QuoteStatus({ status }) { return <Tag color={statusColor[status] || 'default'}>{status}</Tag>; }
 
 function FieldGrid({ record }) {
@@ -162,25 +163,26 @@ function QuoteDetail({ record, onClose, role, canEdit, canModify, onSubmit, onMo
       {canModify && <Button disabled={!ready} onClick={() => form.validateFields().then(values => onModify(record, values))}>保存修改</Button>}
       {!canEdit && <div className="quote-readonly"><span>计价方式 <b>{record.pricing || '—'}</b></span><span>单价 <b>{record.unitPrice ?? '—'}</b></span>{record.plan && <p>项目计划：{record.plan}</p>}{record.output && <p>理论产值：{record.output}</p>}{record.profitSheet && <p>理论利润测算表：{record.profitSheet}</p>}</div>}
     </section>
-    {stage === '待签单' && <div className="quote-wait-box">报价已审核通过。字节项目还要登记确认结果、确认时间，以及截图或链接形式的凭证，三项都有才能进入已立项。</div>}
+    {stage === '待签单' && <div className="quote-wait-box">报价已审核通过，项目待启动。登记签单结果、确认时间及凭证后，在项目详情核对管理表和产出表链接。</div>}
     {record.confirmResult && <div className="quote-sign-box"><strong>客户确认 / 签单</strong><p>结果：{record.confirmResult}</p><p>时间：{record.confirmTime}</p><p>凭证：{record.voucherKind === 'screenshot' ? '截图' : '链接'}</p>{record.voucherKind === 'screenshot' && record.voucherImage ? <img src={record.voucherImage} alt="签单或客户确认截图" /> : <a href={record.voucher} target="_blank" rel="noreferrer">{record.voucher}</a>}</div>}
     <section className="trial-detail-section"><div className="trial-detail-heading"><div><p className="panel-kicker">操作留痕</p><h3>报价动态</h3></div></div><div className="init-activity">{record.activity?.map(item => <div key={item}><span /><p>{item}</p></div>)}</div></section>
     <div className="quote-drawer-actions">
       {role === 'PMO' && stage === '待审核' && <Button danger icon={<Undo2 size={14} />} onClick={() => onReject(record)}>审核不通过</Button>}
       {role === 'PMO' && stage === '待审核' && <Button type="primary" icon={<CheckCircle2 size={14} />} onClick={() => onApprove(record)}>审核通过</Button>}
       {role === 'PMO' && stage === '待签单' && <Button type="primary" icon={<Stamp size={14} />} onClick={() => onSign(record)}>登记确认 / 签单</Button>}
-      {record.status === '已立项' && hasPlan(record) && (role === 'PMO' || record.pm === PM_NAME) && <Button type="primary" icon={<Play size={14} />} onClick={() => onStart(record)}>开始执行</Button>}
+      {['已立项', '待启动'].includes(record.status) && (role === 'PMO' || record.pm === PM_NAME) && <Button type="primary" icon={<Play size={14} />} onClick={() => onStart(record)}>查看启动条件</Button>}
     </div>
   </div>;
 }
 
 function CreateQuoteModal({ open, onCancel, onCreate }) {
   const [form] = Form.useForm();
+  const customers = open ? applicationCustomerOptions() : [];
   return <Modal title="创建报价" open={open} okText="创建并填写" onCancel={onCancel} onOk={() => form.validateFields().then(values => { onCreate(values); form.resetFields(); })}>
     <p className="modal-help-copy">由当前 PM 创建。创建后进入待报价，补充计价方式和单价后再提交给 PMO。</p>
     <Form form={form} layout="vertical">
       <div className="quote-form-grid"><Form.Item name="projectNo" label="项目编号" rules={[{ required: true, message: '请填写项目编号' }]}><Input /></Form.Item><Form.Item name="projectName" label="项目名称" rules={[{ required: true, message: '请填写项目名称' }]}><Input /></Form.Item></div>
-      <div className="quote-form-grid"><Form.Item name="customer" label="客户" rules={[{ required: true, message: '请填写客户' }]}><Input /></Form.Item><Form.Item name="pricing" label="计价方式"><Select allowClear placeholder="可稍后填写" options={['计件', '包时', '包月'].map(value => ({ value, label: value }))} /></Form.Item></div>
+      <div className="quote-form-grid"><Form.Item name="customer" label="客户" rules={[{ required: true, message: '请选择客户' }]}><Select showSearch options={customers} /></Form.Item><Form.Item name="pricing" label="计价方式"><Select allowClear placeholder="可稍后填写" options={['计件', '包时', '包月'].map(value => ({ value, label: value }))} /></Form.Item></div>
       <Form.Item name="unitPrice" label="单价"><InputNumber min={0} style={{ width: '100%' }} placeholder="可稍后填写" /></Form.Item>
     </Form>
   </Modal>;
@@ -207,7 +209,7 @@ function SignModal({ record, open, onCancel, onSubmit }) {
   const voucherImage = Form.useWatch('voucherImage', form);
   React.useEffect(() => { if (open) form.setFieldsValue({ voucherKind: 'link', voucher: '', voucherImage: '' }); }, [open, form]);
   return <Modal title="登记字节客户确认 / 签单" open={open} okText="完成登记" onCancel={onCancel} onOk={() => form.validateFields().then(values => { onSubmit(record, values); form.resetFields(); })}>
-    <p className="modal-help-copy">{record?.projectName} 是字节项目。确认结果、确认时间、凭证缺任何一项都不能进入已立项。凭证可以上传截图，也可以填写链接。</p>
+    <p className="modal-help-copy">{record?.projectName} 是字节项目。请登记确认结果、确认时间和凭证，项目启动还需补齐管理表与产出表链接。凭证支持截图或链接。</p>
     <Form form={form} layout="vertical">
       <Form.Item name="confirmResult" label="确认结果" rules={[{ required: true, message: '请登记确认结果' }]}><Select options={['客户确认', '已签单'].map(value => ({ value, label: value }))} /></Form.Item>
       <Form.Item name="confirmTime" label="确认时间" rules={[{ required: true, message: '请登记确认时间' }]}><DatePicker showTime style={{ width: '100%' }} /></Form.Item>
@@ -217,7 +219,7 @@ function SignModal({ record, open, onCancel, onSubmit }) {
   </Modal>;
 }
 
-export function QuotationPage({ role = 'PMO', onRoleChange, focusKey = '' }) {
+export function QuotationPage({ role = 'PMO', onRoleChange, focusKey = '', onNavigate }) {
   const [records, setRecords] = React.useState(loadQuotes);
   const [tab, setTab] = React.useState('all');
   const [query, setQuery] = React.useState('');
@@ -239,7 +241,7 @@ export function QuotationPage({ role = 'PMO', onRoleChange, focusKey = '' }) {
   const update = (record, patch, notice) => {
     const next = records.map(item => item.key === record.key ? { ...item, ...patch, updatedAt: nowStamp() } : item);
     persistQuotes(next);
-    setRecords(next);
+    setRecords(loadQuotes());
     if (notice) message.success(notice);
   };
   const submitQuote = (record, values) => {
@@ -252,39 +254,39 @@ export function QuotationPage({ role = 'PMO', onRoleChange, focusKey = '' }) {
   };
   const modifyQuote = (record, values) => update(record, { ...values, activity: [`${nowStamp()} · PMO 修改报价内容，项目状态保持${record.status}`, ...(record.activity || [])] }, '报价内容已修改');
   const createQuote = values => {
+    let association;
+    try { association = prepareApplicationCustomers(values); }
+    catch (error) { message.error(error.message); return; }
     const created = { key: `quote-${Date.now()}`, quoteId: `BJ-${dayjs().format('YYYYMMDDHHmmss')}`, projectId: `PRJ-${Date.now()}`, projectNo: values.projectNo, projectName: values.projectName, customer: values.customer, pm: PM_NAME, status: '待报价', count: 0, pricing: values.pricing || '', unitPrice: values.unitPrice ?? null, plan: '', output: '', profitSheet: '', review: '', rejectReason: '', confirmResult: '', confirmTime: '', voucher: '', demandId: '—', trialId: '—', initiationId: '—', updatedAt: nowStamp(), activity: [`${nowStamp()} · 王然手动创建报价`] };
+    Object.assign(created, { groupKey: association.groupKey, subjectKey: association.subjectKey });
     const next = [created, ...records];
     persistQuotes(next);
-    setRecords(next);
+    setRecords(loadQuotes());
     setCreating(false);
     setSelectedKey(created.key);
     message.success('报价已创建，请补充项目信息并提交');
   };
   const approve = record => {
-    if (record.customer === '字节') {
-      update(record, { review: '通过', rejectReason: '', activity: [`${nowStamp()} · PMO 审核通过，项目保持报价中，等待登记字节客户确认或签单`, ...(record.activity || [])] }, '审核通过，等待登记客户确认或签单');
-      return;
-    }
-    const nextStatus = hasPlan(record) ? '已立项' : '项目进行中';
+    const nextStep = isByteCustomer(record) ? '待登记签单并补齐双表链接' : '待补齐双表链接';
     update(record, {
-      status: nextStatus, review: '通过', rejectReason: '',
-      activity: [`${nowStamp()} · ${hasPlan(record) ? '已有项目计划，进入已立项，等待开始执行' : '已立项后无项目计划，系统自动进入项目进行中'}`, `${nowStamp()} · PMO 审核通过，非字节项目进入已立项`, ...(record.activity || [])],
-    }, nextStatus === '已立项' ? '审核通过，项目进入已立项' : '审核通过，项目已自动进入进行中');
+      status: '待启动', review: '通过', rejectReason: '',
+      activity: [`${nowStamp()} · PMO审核通过，项目待启动，${nextStep}`, ...(record.activity || [])],
+    }, '审核通过，项目进入待启动');
   };
   const reject = (record, reason) => {
     update(record, { status: '待报价', review: '不通过', rejectReason: reason, activity: [`${nowStamp()} · PMO 审核不通过：${reason}`, ...(record.activity || [])] }, '已退回，项目回到待报价');
     setRejectKey('');
   };
   const sign = (record, values) => {
-    const nextStatus = hasPlan(record) ? '已立项' : '项目进行中';
+    const nextStatus = '待启动';
     const confirmTime = values.confirmTime?.format ? values.confirmTime.format('YYYY-MM-DD HH:mm') : values.confirmTime;
     update(record, {
       status: nextStatus, confirmResult: values.confirmResult, confirmTime, voucherKind: values.voucherKind, voucher: values.voucherKind === 'screenshot' ? '截图' : values.voucher, voucherImage: values.voucherKind === 'screenshot' ? values.voucherImage : '',
-      activity: [`${nowStamp()} · ${hasPlan(record) ? '登记完成，进入已立项，等待开始执行' : '登记完成，无项目计划，系统自动进入项目进行中'}`, `${nowStamp()} · PMO 登记${values.confirmResult}`, ...(record.activity || [])],
+      activity: [`${nowStamp()} · 登记完成，核对项目双表链接后启动`, `${nowStamp()} · PMO 登记${values.confirmResult}`, ...(record.activity || [])],
     }, '客户确认已登记');
     setSignKey('');
   };
-  const startExecution = record => update(record, { status: '项目进行中', activity: [`${nowStamp()} · 提交开始执行，项目进入项目进行中`, ...(record.activity || [])] }, '项目已进入进行中');
+  const startExecution = record => onNavigate?.(`projects:${record.projectNo}`);
   const countOf = stage => mine.filter(item => !stage || quoteStage(item) === stage).length;
   const columns = [
     { title: '项目编号', dataIndex: 'projectNo', width: 146, render: value => <span className="trial-project-no">{value}</span> },
@@ -306,20 +308,22 @@ export function QuotationPage({ role = 'PMO', onRoleChange, focusKey = '' }) {
         {role === 'PMO' && stage === '待审核' && <Button type="link" size="small" onClick={() => approve(record)}>通过</Button>}
         {role === 'PMO' && stage === '待审核' && <Button danger type="link" size="small" onClick={() => setRejectKey(record.key)}>退回</Button>}
         {role === 'PMO' && stage === '待签单' && <Button type="link" size="small" onClick={() => setSignKey(record.key)}>登记签单</Button>}
-        {(role === 'PMO' || record.pm === PM_NAME) && record.status === '已立项' && hasPlan(record) && <Button type="link" size="small" onClick={() => startExecution(record)}>开始执行</Button>}
+        {(role === 'PMO' || record.pm === PM_NAME) && ['已立项', '待启动'].includes(record.status) && <Button type="link" size="small" onClick={() => startExecution(record)}>查看启动条件</Button>}
       </Space>;
     } },
   ];
-  const tabs = [['all', '全部'], ['待报价', '待报价'], ['待审核', '待审核'], ['待签单', '待签单'], ['报价结果', '报价结果']].map(([key, label]) => ({ key, label: <span>{label} <em>{countOf(key === 'all' ? '' : key)}</em></span> }));
+  const tabs = [['all', '全部'], ['待报价', '待报价'], ['待审核', '待审核'], ['待签单', '待签单'], ['待启动', '待启动'], ['报价结果', '报价结果']].map(([key, label]) => ({ key, label: <span>{label} <em>{countOf(key === 'all' ? '' : key)}</em></span> }));
   if (selected) return <div className="trial-page quote-page"><QuoteDetail record={selected} onClose={() => setSelectedKey('')} role={role} canEdit={canEdit(selected)} canModify={canModify(selected)} onSubmit={submitQuote} onModify={modifyQuote} onApprove={approve} onReject={record => setRejectKey(record.key)} onSign={record => setSignKey(record.key)} onStart={startExecution} /><RejectModal record={records.find(item => item.key === rejectKey)} open={Boolean(rejectKey)} onCancel={() => setRejectKey('')} onSubmit={reject} /><SignModal record={records.find(item => item.key === signKey)} open={Boolean(signKey)} onCancel={() => setSignKey('')} onSubmit={sign} /></div>;
   return <div className="trial-page quote-page">
-    <div className="trial-page-heading"><div><p className="eyebrow">项目管理 · 报价管理</p><h1>报价管理</h1><p className="subtitle">PM 创建并提交报价。PMO 负责审核、修改和字节客户签单登记。</p></div><Space><div className="trial-role-switch"><ShieldCheck size={14} /><span>演示身份</span><Select aria-label="演示身份" size="small" value={role} onChange={onRoleChange} options={[{ value: 'PMO', label: 'PMO · 林晓彤' }, { value: 'PM', label: 'PM · 王然' }, { value: '财务', label: '财务 · 赵敏' }]} /></div>{role === 'PM' && <Button type="primary" icon={<Plus size={14} />} onClick={() => setCreating(true)}>创建报价</Button>}</Space></div>
+    <div className="trial-page-heading"><div><p className="eyebrow">项目管理 · 报价管理</p><h1>报价管理</h1><p className="subtitle">PM 创建并提交报价。PMO 负责审核、修改和字节客户签单登记。</p></div><Space><div className="trial-role-switch"><ShieldCheck size={14} /><span>当前身份</span><Select aria-label="当前身份" size="small" value={role} onChange={onRoleChange} options={[{ value: 'PMO', label: 'PMO · 林晓彤' }, { value: 'PM', label: 'PM · 王然' }, { value: '财务', label: '财务 · 赵敏' }]} /></div>{role === 'PM' && <Button type="primary" icon={<Plus size={14} />} onClick={() => setCreating(true)}>创建报价</Button>}</Space></div>
     <div className="trial-stat-grid quote-stat-grid">{['待报价', '待审核', '待签单', '报价结果'].map(stage => <Card key={stage} variant="borderless"><div><small>{stage}</small><strong>{countOf(stage)}</strong></div></Card>)}</div>
     <Card variant="borderless" className="trial-work-card">
       <div className="trial-list-toolbar"><Input prefix={<Search size={15} />} allowClear value={query} onChange={event => setQuery(event.target.value)} placeholder="搜索项目名称、编号、客户、PM" aria-label="搜索报价记录" /><span className="trial-permission-chip"><ShieldCheck size={13} /> {role === 'PMO' ? '全部报价记录' : '我承接的报价记录'}</span></div>
       <Tabs activeKey={tab} onChange={setTab} items={tabs} className="trial-tabs" />
       <div className="trial-table-wrap"><Table rowKey="key" columns={columns} dataSource={visible} pagination={{ pageSize: 8, showSizeChanger: false }} scroll={{ x: 1380 }} locale={{ emptyText: <Empty description="暂无符合条件的报价记录" /> }} onRow={record => ({ onClick: event => { if (event.target.closest('button, a, .ant-btn')) return; setSelectedKey(record.key); } })} /></div>
     </Card>
+    <RejectModal record={records.find(item => item.key === rejectKey)} open={Boolean(rejectKey)} onCancel={() => setRejectKey('')} onSubmit={reject} />
+    <SignModal record={records.find(item => item.key === signKey)} open={Boolean(signKey)} onCancel={() => setSignKey('')} onSubmit={sign} />
     <CreateQuoteModal open={creating} onCancel={() => setCreating(false)} onCreate={createQuote} />
   </div>;
 }
