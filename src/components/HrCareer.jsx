@@ -14,17 +14,13 @@ function Assignment({ title, value }) {
   }))} />;
 }
 
-export default function HrCareer({ role }) {
-  return <div className="hr-page"><div className="hr-page-heading"><div><p className="eyebrow">人事 · 职业履历</p><h1>职业履历</h1><p className="subtitle">按任职期间追溯部门、岗位、地点和直属经理的当时信息。</p></div></div><HrCareerPanel role={role} /></div>;
-}
-
 export function HrCareerPanel({ role, personId }) {
   const { view, error, refresh } = useHrFeature(() => getHrCareerView(role, personId), [role, personId]);
   const [query, setQuery] = React.useState(''), [selectedId, setSelectedId] = React.useState(''), [edit, setEdit] = React.useState(null), [failure, setFailure] = React.useState('');
   const [form] = Form.useForm();
   const hr = ['人事', 'HR'].includes(role);
   React.useEffect(() => { setSelectedId(''); setEdit(null); }, [role, personId]);
-  const rows = (view?.rows || []).filter(row => !query.trim() || `${row.name} ${row.employeeNo} ${row.approvalId} ${row.assignment?.position?.name}`.toLowerCase().includes(query.trim().toLowerCase()));
+  const rows = (view?.rows || []).filter(row => !query.trim() || `${row.approvalId || ''} ${row.assignment?.position?.name}`.toLowerCase().includes(query.trim().toLowerCase()));
   const selected = rows.find(row => row.id === selectedId);
   React.useEffect(() => {
     if (!edit) return;
@@ -35,7 +31,7 @@ export function HrCareerPanel({ role, personId }) {
   const save = async () => {
     try {
       const input = await form.validateFields();
-      hrAction(role, edit.row ? 'career.correct' : 'career.add', { ...input, id: edit.row?.id, expectedVersion: edit.row?.version, expectedRevision: edit.revision });
+      hrAction(role, edit.row ? 'career.correct' : 'career.add', { ...input, personId, id: edit.row?.id, expectedVersion: edit.row?.version, expectedRevision: edit.revision });
       setEdit(null); refresh(); message.success('历史任职已保存，冲突与缺项保留待核对');
     } catch (error) { setFailure(error.message || '请检查填写内容'); }
   };
@@ -43,9 +39,8 @@ export function HrCareerPanel({ role, personId }) {
     <Alert type="info" showIcon title="任职按生效日衔接，原任职截至前一自然日" description="历史名称及关联标识独立保存。人事可据材料补录历史段，当前任职更正通过飞书审批；真实审批读取及生效服务待接入。" />
     {error && <Alert type="error" title={error} action={<Button onClick={refresh}>重试</Button>} />}
     <Card className="hr-section hr-table-card"><div className="hr-card-heading"><div><h2>任职期间 <span>{rows.length} 段</span></h2><p>查看完整四项前后快照及材料、审批关联。</p></div><Space wrap><Button icon={<ReloadOutlined />} onClick={refresh}>刷新</Button>{hr && <Button type="primary" icon={<PlusOutlined />} onClick={() => openEdit(null)}>补录历史任职</Button>}</Space></div>
-      <div className="hr-filter-grid"><Input aria-label="搜索职业履历" allowClear value={query} placeholder="姓名 / 员工编号 / 岗位 / 审批单" onChange={event => setQuery(event.target.value)} /></div>
-      <Table rowKey="id" loading={!view && !error} dataSource={rows} scroll={{ x: personId ? 1100 : 1270 }} pagination={{ pageSize: 8, showSizeChanger: true }} locale={{ emptyText: <Empty description="暂无任职履历，可由人事据材料补齐" /> }} columns={[
-        ...(!personId ? [{ title: '人员', width: 160, fixed: 'left', render: (_, row) => <>{row.name}<span className="hr-cell-note">{row.employeeNo}</span></> }] : []),
+      <div className="hr-filter-grid"><Input aria-label="搜索职业履历" allowClear value={query} placeholder="岗位 / 审批单" onChange={event => setQuery(event.target.value)} /></div>
+      <Table rowKey="id" loading={!view && !error} dataSource={rows} scroll={{ x: 1100 }} pagination={{ pageSize: 8, showSizeChanger: true }} locale={{ emptyText: <Empty description="暂无任职履历，可由人事据材料补齐" /> }} columns={[
         { title: '任职期间', width: 215, render: (_, row) => period(row) },
         ...ASSIGNMENT_KEYS.map(key => ({ title: ASSIGNMENT_LABELS[key], width: 150, render: (_, row) => row.assignment?.[key]?.name || '待补齐' })),
         { title: '记录状态', width: 115, dataIndex: 'status', render: value => <Tag color={value === '待核对' ? 'warning' : 'success'}>{value}</Tag> },
@@ -65,7 +60,7 @@ export function HrCareerPanel({ role, personId }) {
     <Modal title={edit?.row ? '更正历史任职补录' : '补录历史任职'} open={!!edit} width={820} onCancel={() => setEdit(null)} onOk={save} okText="保存历史任职" destroyOnHidden>
       <p className="hr-muted">填写当时名称及可核验的来源标识。缺少日期或四项资料时保留待核对；补录不直接修改当前任职。</p>
       {failure && <Alert type="error" title={failure} style={{ marginBottom: 12 }} />}
-      <Form form={form} layout="vertical"><Form.Item name="personId" label="关联人员" rules={[{ required: true, message: '请选择人员' }]}><Select showSearch optionFilterProp="label" disabled={!!personId || !!edit?.row} options={(view?.people || []).map(person => ({ value: person.id, label: `${person.name} · ${person.employeeNo}` }))} /></Form.Item>
+      <Form form={form} layout="vertical"><Form.Item name="personId" label="关联人员" rules={[{ required: true, message: '请选择人员' }]}><Select showSearch optionFilterProp="label" disabled options={(view?.people || []).map(person => ({ value: person.id, label: `${person.name} · ${person.employeeNo}` }))} /></Form.Item>
         <div className="hr-form-columns"><Form.Item name="startDate" label="任职开始日期"><HrDateField /></Form.Item><Form.Item name="endDate" label="任职结束日期" extra="历史结束日期须早于今天。"><HrDateField /></Form.Item>
           {ASSIGNMENT_KEYS.map(key => <React.Fragment key={key}><Form.Item name={['assignment', key, 'name']} label={`${ASSIGNMENT_LABELS[key]} · 当时名称`}><Input /></Form.Item><Form.Item name={['assignment', key, 'id']} label={`${ASSIGNMENT_LABELS[key]} · 当时标识`}><Input /></Form.Item></React.Fragment>)}
           <Form.Item name="approvalId" label="历史审批单标识"><Input /></Form.Item><Form.Item name="sourceRecordId" label="原始业务记录标识"><Input /></Form.Item>

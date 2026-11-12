@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, Button, Card, DatePicker, Descriptions, Drawer, Empty, Input, Select, Space, Statistic, Table, Tabs, Tag, message } from 'antd';
+import { Alert, Button, Card, DatePicker, Descriptions, Drawer, Empty, Select, Space, Statistic, Table, Tabs, Tag, message } from 'antd';
 import { ReloadOutlined, SyncOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
@@ -12,19 +12,15 @@ const hours = value => value == null ? '未取得时长' : `${Number(value.toFix
 const status = value => <Tag color={value === '已读取' ? 'success' : value === '部分数据待核对' ? 'warning' : 'default'}>{value}</Tag>;
 const when = value => value?.length > 10 ? new Date(value).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false }) : value || '未读取';
 
-export default function HrAttendance({ role }) {
-  return <div className="hr-page"><div className="hr-page-heading"><div><p className="eyebrow">人事 · 出勤</p><h1>出勤记录</h1><p className="subtitle">按人员查看飞书每日统计时长、月度出勤天数与读取版本。</p></div></div><HrAttendancePanel role={role} /></div>;
-}
-
 export function HrAttendancePanel({ role, personId }) {
   const [month, setMonth] = React.useState(() => previousMonth(beijingToday()));
-  const [query, setQuery] = React.useState(''), [selectedId, setSelectedId] = React.useState('');
+  const [selectedId, setSelectedId] = React.useState('');
   const [version, setVersion] = React.useState('latest'), [busy, setBusy] = React.useState(false);
   const { view, error, refresh } = useHrFeature(() => getHrAttendanceView(role, month, personId), [role, month, personId]);
   const hr = ['人事', 'HR'].includes(role);
   React.useEffect(() => { setSelectedId(''); setVersion('latest'); }, [role, month, personId]);
   const snapshot = version === 'original' ? view?.original : version === 'latest' ? view?.latest : view?.batches.find(batch => batch.id === version)?.snapshot;
-  const rows = (view?.rows || []).filter(row => !query.trim() || `${row.name} ${row.employeeNo}`.toLowerCase().includes(query.trim().toLowerCase())).map(row => {
+  const rows = (view?.rows || []).map(row => {
     if (version === 'latest') return row;
     const daily = snapshot?.records.filter(item => item.personId === row.personId) || [];
     const issues = snapshot?.issues.filter(item => item.personId === row.personId) || [];
@@ -52,16 +48,14 @@ export function HrAttendancePanel({ role, personId }) {
     <Alert type="info" showIcon title="月度出勤 = 飞书统计总小时数 ÷ 8，展示三位小数" description="北京时间每月1日19:00补卡截止，3日读取上月，周末不顺延；3日具体执行时刻待确认。当前使用来源快照，真实飞书读取与定时服务待接入。" />
     {error && <Alert type="error" title={error} action={<Button onClick={refresh}>重试</Button>} />}
     <Card className="hr-section hr-table-card">
-      <div className="hr-card-heading"><div><h2>月度出勤 <span>{rows.length} 人</span></h2><p>点击出勤天数查看每日明细；真实零时长与未取得记录分别显示。</p></div><Space wrap><Button icon={<ReloadOutlined />} onClick={refresh}>刷新</Button>{hr && <Button type="primary" icon={<SyncOutlined />} loading={busy} disabled={!view || month > beijingToday().slice(0, 7)} onClick={read}>{month === beijingToday().slice(0, 7) ? '同步本月出勤' : '重新读取该月'}</Button>}</Space></div>
+      <div className="hr-card-heading"><div><h2>月度出勤</h2><p>点击出勤天数查看此人的每日明细。{hr && '同步和重读按整月执行，此处只显示本人的结果。'}</p></div><Space wrap><Button icon={<ReloadOutlined />} onClick={refresh}>刷新</Button>{hr && <Button type="primary" icon={<SyncOutlined />} loading={busy} disabled={!view || month > beijingToday().slice(0, 7)} onClick={read}>{month === beijingToday().slice(0, 7) ? '同步本月出勤' : '重新读取该月'}</Button>}</Space></div>
       <div className="hr-filter-grid">
         <label className="hr-inline-field">月份<DatePicker aria-label="出勤月份" locale={datePickerZhCN} picker="month" format="YYYY-MM" placeholder="选择月份" allowClear={false} value={dayjs(`${month}-01`)} disabledDate={value => value.format('YYYY-MM') > beijingToday().slice(0, 7)} onChange={value => { if (value) setMonth(value.format('YYYY-MM')); }} /></label>
-        {!personId && <Input aria-label="搜索出勤人员" allowClear placeholder="姓名 / 员工编号" value={query} onChange={event => setQuery(event.target.value)} />}
         <Select aria-label="查看出勤版本" value={version} onChange={setVersion} options={[{ value: 'latest', label: '当前成功版本' }, { value: 'original', label: '3日原始快照', disabled: !view?.original }, ...(view?.batches || []).filter(batch => batch.snapshot).map(batch => ({ value: batch.id, label: `${when(batch.readAt)} · ${batch.method} · v${batch.snapshot.version}` }))]} />
       </div>
       {snapshot ? <div className="hr-scope"><Space wrap><Tag color={snapshot.complete ? 'success' : 'warning'}>{snapshot.complete ? '来源批次校验通过' : '月份数据待核对'}</Tag><span>版本 {snapshot.version} · {snapshot.method}</span><span>读取时间 {when(snapshot.readAt)}</span><span>读取范围截至 {snapshot.coverageEnd || '待核对'}</span></Space></div> : <Alert type="info" title="该月尚未读取" description={hr ? '点击同步或重新读取后显示实际取得的来源记录。无来源快照的月份保留未读取状态。' : '等待人事同步或月度读取。'} />}
       {view?.latest?.lastError && <Alert type="error" title={`最近读取失败：${view.latest.lastError}`} description="继续展示上一次成功数据。" />}
-      <Table rowKey="personId" loading={!view && !error} dataSource={rows} scroll={{ x: personId ? 650 : 970 }} pagination={{ pageSize: 10, showSizeChanger: true, showTotal: total => `共${total}人` }} locale={{ emptyText: <Empty description="当前范围没有匹配人员" /> }} columns={[
-        ...(!personId ? [{ title: '人员', width: 175, fixed: 'left', render: (_, row) => <>{row.name}<span className="hr-cell-note">{row.employeeNo}</span></> }] : []),
+      <Table rowKey="personId" loading={!view && !error} dataSource={rows} scroll={{ x: 650 }} pagination={false} locale={{ emptyText: <Empty description="暂无该人员的出勤信息" /> }} columns={[
         { title: '月度出勤天数', align: 'right', width: 165, render: (_, row) => row.hours == null ? <span className="hr-muted">未取得记录</span> : <Button type="link" className="hr-attendance-days" onClick={() => setSelectedId(row.personId)}>{row.days} 天</Button> },
         { title: '总小时数', dataIndex: 'hours', align: 'right', width: 150, render: hours },
         { title: '有效每日记录', render: (_, row) => `${row.daily.length} 条`, width: 130 },

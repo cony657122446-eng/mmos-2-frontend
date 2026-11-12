@@ -453,7 +453,7 @@ test('correction to elimination terminates checklist and ends current relations 
 test('last working day remains departing and all project relations end the next Beijing day', () => {
   const state=seed();const p=state.people[0];p.resignation={status:'通过',effectiveDate:day,evidence:'verified'};
   assert.equal(employmentStatus(p,day),'离职中');
-  let next=reconcileHrState(state,day);assert.equal(next.people[0].projectIds.length,2);
+  let next=reconcileHrState(state,day);assert.equal(next.people[0].projectIds.length,1);
   next=reconcileHrState(next,'2026-11-06');assert.equal(next.people[0].projectIds.length,0);
   assert.equal(tenureDays(next.people[0],'2026-11-07'),5);
   const late=mergeHrOutputFacts(next,[{id:'late-before',personId:p.id,projectId:state.projects[0].id,date:day,validated:true},{id:'late-after',personId:p.id,projectId:state.projects[0].id,date:'2026-11-06',validated:true}],{},'2026-11-07');
@@ -498,7 +498,7 @@ test('supplement preserves MMOS training, refreshes known cross-day sources, all
   next=mergeHrSource(next,[{...row,name:'来源更正名称'}],'2026-11-09');p=next.people.find(p=>p.sourceId===row.sourceId);
   assert.equal(p.name,'来源更正名称');assert.equal(p.trainingResult,'淘汰');assert.equal(p.subsidyAmount,144);
   assert.throws(()=>act(state,'source.supplement',{}),/姓名或/);
-  const imported=act(state,'source.supplement',{name:'补采候选'});
+  const imported=act(state,'source.supplement',{name:'董欣然'});
   assert.equal(imported.sync.lastResults.length,1);
 });
 
@@ -649,4 +649,23 @@ test('historical backfill verifies existing unarchived enterprise account before
   const next = act(state,'history.backfill',{...payload,enterpriseAccount:person.enterpriseAccount});
   assert.equal(next.people.find(p=>p.id===person.id).masterCreated,true);
   assert.equal(next.people.length,state.people.length);
+});
+
+test('legacy sample labels change only for identified people and forms; edited names and workflow values survive', () => {
+  const state = seed(), p = id => state.people.find(r => r.id === id);
+  p('hr-6').name = '待评定'; p('hr-9').name = '待激活';
+  p('hr-10').name = '待关联资料'; p('hr-11').name = '用户已更名';
+  state.intakes[0].values.name = '待关联资料';
+  state.external[0].name = '兼职方晴';
+  state.people.push({ ...p('hr-6'), id: 'other-source', sourceId: 'other-source', employeeNo: 'MCE99999111', recruitmentNo: 'ZP99111' });
+  const next = reconcileHrState(state, day);
+  assert.equal(next.people.find(r => r.employeeNo === 'MCE00001836').name, '宋雨桐');
+  assert.equal(next.people.find(r => r.employeeNo === 'MCE00001839').name, '邓思妍');
+  assert.equal(next.people.find(r => r.id === 'hr-9').accountActive, false);
+  assert.equal(next.people.find(r => r.id === 'hr-11').name, '用户已更名');
+  assert.equal(next.people.find(r => r.id === 'hr-12').trainingResult, '培训储备');
+  assert.equal(next.people.find(r => r.id === 'other-source').name, '待评定');
+  assert.equal(next.external[0].name, '方晴');
+  assert.equal(next.intakes[0].values.name, next.people.find(r => r.id === 'hr-10').name);
+  assert.deepEqual(reconcileHrState(next, day), next);
 });

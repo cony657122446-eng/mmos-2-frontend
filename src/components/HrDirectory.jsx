@@ -55,7 +55,7 @@ function Overview({ view, role, onNavigate }) {
   ];
   const entries = role === '部门经理' ? [['候选人库', '本部门培训评定', 'hr-candidates', <UserOutlined />], ['入职清单', '本部门入职异常跟进', 'hr-onboarding', <CheckCircleOutlined />], ['我的待办', '本部门需要跟进的事项', 'todos', <CheckCircleOutlined />]] : [
     ...(role === '人事' ? [['组织管理', '部门、工作地点及岗位清单', 'hr-organization', <ApartmentOutlined />], ['人员主库', '已建档人员与任职信息', 'people-master', <IdcardOutlined />], ['候选人库', '查看来源、培训状态与结果评定', 'hr-candidates', <UserOutlined />], ['入职资料表', '招聘编号自动匹配及资料核对', 'hr-intakes', <IdcardOutlined />]] : []),
-    ...(role === '人事' ? [['人员合同管理', '合同与协议、原件归档及历史维护', 'hr-personnel-contracts', <IdcardOutlined />], ['出勤记录', '月度天数、每日明细与读取差异', 'hr-attendance', <CheckCircleOutlined />], ['职业履历', '任职期间及四项信息快照', 'hr-career', <UserOutlined />]] : []),
+    ...(role === '人事' ? [['人员合同管理', '合同与协议、原件归档及历史维护', 'hr-personnel-contracts', <IdcardOutlined />]] : []),
     ['在项人员', '当前项目人员与入职异常', 'project-people', <TeamOutlined />],
     ...(['人事', 'PM', '部门经理'].includes(role) ? [['入职清单', '入职意愿、准入条件与办理进度', 'hr-onboarding', <CheckCircleOutlined />]] : []),
     ['外部人员表', '当前在项兼职人员及项目', 'people-external', <UserOutlined />],

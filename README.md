@@ -51,3 +51,7 @@ npm run preview
 财务七个菜单、客户开票资料、同客户合票、回款分配、季度职位成本、审批与兼职结算、合同查询均可交互。进入财务身份页面会自动填入模拟测试数据；修改保存在当前浏览器。真实飞书/人事等接口仍待接入。
 
 测试：`node --test src/data/*.test.js`。详见 [模拟操作说明](FINANCE-DEMO.md) 和 [财务对齐记录](FINANCE-DOC-ALIGNMENT.md)。测试发票附件：[demo-invoice.pdf](public/demo-invoice.pdf)。
+
+## 招聘提报2.9.0 / 2.9.1
+
+2026-11-11新增一级招聘导航与提报审批分配流程，使用方式、验证和接入边界见 [RECRUITMENT-PREVIEW.md](./RECRUITMENT-PREVIEW.md)。

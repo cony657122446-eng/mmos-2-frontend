@@ -204,7 +204,7 @@ test('attendance HR permissions, future months, stale versions and old source ba
 });
 
 test('attendance supports a non-project staff member by stable personnel identity', () => {
-  const state = seed(), person = { ...state.people[0], id: 'functional-staff', employeeNo: 'MCE99990001', sourceId: 'real-functional', functional: true, projectIds: [], contracts: [] };
+  const state = seed(), person = { ...state.people[0], id: 'functional-staff', employeeNo: 'MCE99990001', sourceId: 'real-functional', functional: true, projectIds: [], endedProjectRelations: [], contracts: [] };
   state.people.push(person);
   state.hrAttendance.sources[month].rows.push({ id: 'functional-attendance', personId: person.id, employeeNo: person.employeeNo, date: '2026-10-02', duration: 0, unit: 'hours' });
   applyHrAttendanceAction(state, '人事', 'attendance.read', { month }, day);

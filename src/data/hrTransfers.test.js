@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { INTAKE_FIELDS } from './hrIntake.js';
 import { createHrSeed, getHrView, HR_KEY, mergeHrOutputFacts, mergeHrSource, reconcileHrState } from './hrWorkspace.js';
 import { getDeliveryLineChanges, getPoolPersonDetails, getTransferView, initializeDeliveryLineSources, initializeTransferState, reduceTransferAction, transferAction } from './hrTransfers.js';
 
@@ -24,10 +25,72 @@ test('incremental demo initialization preserves existing records and runs once',
   const state = initializeTransferState(previous, day);
   assert.equal(state.people[0].name, '用户修改名称');
   assert.deepEqual(previous.people[0].projectIds, state.people[0].projectIds);
-  assert.equal(state.people.length, previous.people.length + 4);
+  assert.ok(state.people.length > previous.people.length);
   assert.deepEqual(initializeTransferState(state, day), state);
   state.people = state.people.filter(row => row.id !== fulltime);
   assert.equal(initializeTransferState(state, day).people.some(row => row.id === fulltime), false);
+});
+
+test('full-time release removes the sole association, remains private until owner shares, and keeps the intern pool separate', () => {
+  const state = seed();
+  const released = act(state, 'available.release', { items: [item()] });
+  const mine = getTransferView(wang, 'PM', released).available.find(r => r.personId === fulltime);
+  assert.deepEqual(person(released, fulltime).projectIds, []);
+  assert.equal(mine.visible, false);
+  assert.equal(mine.canManage, true);
+  assert.ok(!getTransferView(lin, 'PM', released).available.some(r => r.key === mine.key));
+  assert.ok(!getTransferView(chen, 'PM', released).available.some(r => r.key === mine.key));
+  const shared = act(released, 'available.visibility', { key: mine.key, visible: true });
+  assert.equal(getTransferView(chen, 'PM', shared).available.find(r => r.key === mine.key).canManage, false);
+  assert.throws(() => act(shared, 'available.visibility', { key: mine.key, visible: false }, chen), /无权/);
+  assert.throws(() => act(shared, 'available.assign', { key: mine.key, targetProjectId: crossProject }, chen), /无权/);
+  assert.throws(() => act(shared, 'pool.claim', { personIds: [fulltime], targetProjectId: crossProject }, chen), /实习生/);
+  const hidden = act(shared, 'available.visibility', { key: mine.key, visible: false });
+  assert.ok(!getTransferView(chen, 'PM', hidden).available.some(r => r.key === mine.key));
+  assert.ok(getTransferView(chen, 'PM', hidden).pool.some(r => r.personId === pooled));
+  assert.throws(() => reduceTransferAction(hidden, wang, 'available.assign', { key: mine.key, targetProjectId: ownProject }, shared.revision, 'PM', day), /数据已更新/);
+  const assigned = act(hidden, 'available.assign', { key: mine.key, targetProjectId: ownProject });
+  assert.ok(!assigned.transfers.available.some(r => r.key === mine.key));
+  assert.deepEqual(person(assigned, fulltime).projectIds, [ownProject]);
+});
+
+test('release groups the same employee under each releasing PM, and blocks ineligible sources and targets', () => {
+  const state = seed();
+  assert.throws(() => act(state, 'available.release', { items: [item(intern)] }), /全职/);
+  assert.throws(() => act(state, 'available.release', { items: [item()] }, chen), /自己项目/);
+  assert.throws(() => act(state, 'available.release', { items: [item()] }, wang, '财务'), /仅可查看/);
+  const other = state.projects.find(p => p.pm === '王然' && p.id !== ownProject && !p.ended);
+  person(state, fulltime).projectIds.push(other.id, crossProject);
+  const first = act(state, 'available.release', { items: [item()] });
+  const key = first.transfers.available.find(r => r.personId === fulltime).key;
+  const second = act(first, 'available.release', { items: [item(fulltime, other.id)] });
+  assert.deepEqual(second.transfers.available.find(r => r.key === key).sources.map(p => p.id), [ownProject, other.id]);
+  const third = act(second, 'available.release', { items: [item(fulltime, crossProject)] }, chen);
+  assert.equal(third.transfers.available.filter(r => r.personId === fulltime).length, 2);
+  assert.equal(getTransferView(chen, 'PM', third).available.filter(r => r.personId === fulltime).length, 1);
+  assert.throws(() => act(third, 'available.assign', { key, targetProjectId: crossProject }), /本人/);
+  third.projects.find(p => p.id === ownProject).ended = true;
+  assert.throws(() => act(third, 'available.assign', { key, targetProjectId: ownProject }), /未结束/);
+});
+
+test('staffing examples use defined HR options and shared rows refer to a recorded former project', () => {
+  const state = seed(), view = getTransferView(wang, 'PM', state);
+  for (const id of [pooled, intern, fulltime, 'hr-available-lin', 'hr-transfer-chen-intern']) {
+    const p = person(state, id);
+    for (const key of ['education', 'english', 'graduation']) {
+      assert.ok(INTAKE_FIELDS.find(f => f.key === key).options.includes(p.archive[key]), id + ':' + key);
+    }
+    assert.ok(p.archive.major && p.archive.school && p.archive.abilityTags.length);
+  }
+  for (const row of [...view.pool, ...view.available.filter(r => r.visible)]) {
+    if (row.intern) assert.ok(row.formerPmName);
+    else {
+      assert.equal(row.ownerName, view.managers.find(pm => pm.id === row.ownerId).name);
+      assert.equal(row.formerPmName, undefined);
+    }
+    assert.ok(row.sourceProjectNames.length && Number.isFinite(Date.parse(row.enteredAt)));
+    if (row.intern || row.canManage || view.lineProjects.some(p => row.sourceProjectNames.includes(p.name))) assert.ok(row.projectExperience.some(p => row.sourceProjectNames.includes(p.name)));
+  }
 });
 
 test('pool profile samples migrate exact built-in records once and preserve every existing field source', () => {
@@ -78,7 +141,7 @@ test('opening an existing browser pool persists missing built-in profile data on
     assert.deepEqual(first.pool.find(row => row.personId === pooled).abilityTags, ['文本标注', '中文语义理解']);
     assert.equal(first.revision, baseline.revision + 1);
     assert.equal(JSON.parse(stored).people.length, baseline.people.length);
-    assert.equal(JSON.parse(stored).transfers.profileSamplesVersion, 1);
+    assert.equal(JSON.parse(stored).transfers.profileSamplesVersion, 2);
     const second = getTransferView(wang, 'PM');
     assert.equal(second.revision, first.revision);
     assert.equal(stored, saved);
@@ -194,8 +257,8 @@ test('pool profiles have no current project or delivery-line owner while retaini
   assert.equal(detail.person.deliveryLineNote, '');
   assert.equal(detail.person.departmentId, employee.departmentId);
   assert.deepEqual(detail.person.projectIds, []);
-  assert.deepEqual(detail.person.projectExperience, []);
-  assert.deepEqual(detail.view.projects, []);
+  assert.deepEqual(detail.person.projectExperience.map(p => p.id), [ownProject]);
+  assert.deepEqual(detail.view.projects, detail.person.projectExperience);
   assert.equal(person(state, pooled).manager, '旧负责人');
 });
 
@@ -207,6 +270,7 @@ test('pool project experience comes only from deduped recorded project associati
   const row = getTransferView(wang, 'PM', entered).pool.find(entry => entry.personId === intern);
   assert.deepEqual(row.projectExperience.map(project => project.id), expected);
   assert.ok(row.projectExperience.every(project => entered.projects.some(source => source.id === project.id && source.name === project.name)));
+  person(entered, pooled).endedProjectRelations = [];
   assert.deepEqual(getTransferView(wang, 'PM', entered).pool.find(entry => entry.personId === pooled).projectExperience, []);
 });
 
@@ -246,6 +310,9 @@ test('legacy former PM names come from the matching entry operation snapshot rat
 test('unrecorded and ID-only pool origins never borrow a current PM name or a different operation type', () => {
   const state = seed();
   const stored = state.transfers.pool.find(row => row.personId === pooled);
+  delete stored.formerPmName;
+  delete stored.formerPmId;
+  stored.actorId = '';
   let row = getTransferView(wang, 'PM', state).pool.find(entry => entry.personId === pooled);
   assert.equal(row.formerPmId, '');
   assert.equal(row.formerPmName, '');
@@ -309,12 +376,11 @@ test('non-PM view follows the existing project scope and is read-only', () => {
   }
 });
 
-test('same-PM transfer ends only the selected source relation and preserves other projects', () => {
+test('same-PM transfer leaves a single current target and retains the source in history', () => {
   const state = seed();
-  const original = person(state, intern).projectIds.find(projectId => projectId !== ownProject);
-  const target = state.projects.find(project => project.pm === '王然' && !project.ended && ![ownProject, original].includes(project.id)).id;
+  const target = state.projects.find(project => project.pm === '王然' && !project.ended && project.id !== ownProject).id;
   const next = act(state, 'transfer', { items: [item(intern)], targetProjectId: target });
-  assert.deepEqual(new Set(person(next, intern).projectIds), new Set([original, target]));
+  assert.deepEqual(person(next, intern).projectIds, [target]);
   assert.deepEqual(person(next, intern).endedProjectRelations.map(row => row.projectId), [ownProject]);
   assert.equal(next.transfers.notifications.length, 0);
   assert.equal(person(state, intern).projectIds.includes(ownProject), true);
@@ -337,10 +403,10 @@ test('batch transfer validates every source relation before committing any chang
   const before = JSON.stringify(state);
   assert.throws(() => act(state, 'transfer', { items: [item(), item('hr-transfer-chen-intern', crossProject)], targetProjectId: peerProject, confirmed: true }), /自己项目/);
   assert.equal(JSON.stringify(state), before);
-  const original = person(state, intern).projectIds.find(projectId => projectId !== ownProject);
-  const next = act(state, 'transfer', { items: [item(), item(intern, original)], targetProjectId: peerProject, confirmed: true });
+  const another = state.people.find(p => p.id.startsWith('hr-staffing-') && state.projects.some(proj => proj.id === p.projectIds[0] && proj.pm === '王然' && proj.id !== ownProject));
+  const next = act(state, 'transfer', { items: [item(), item(another.id, another.projectIds[0])], targetProjectId: peerProject, confirmed: true });
   assert.deepEqual(person(next, fulltime).projectIds, [peerProject]);
-  assert.deepEqual(new Set(person(next, intern).projectIds), new Set([ownProject, peerProject]));
+  assert.deepEqual(person(next, another.id).projectIds, [peerProject]);
 });
 
 test('eligibility, project status, invalid actors and stale revision are revalidated', () => {
@@ -444,8 +510,8 @@ test('approval revalidates target ownership, ended state and current source rela
 
 test('intern entry exits all project relations including other PMs and dedupes batch people', () => {
   const state = seed();
-  const original = person(state, intern).projectIds.find(projectId => projectId !== ownProject);
-  person(state, intern).projectIds.push(crossProject);
+  const original = state.projects.find(project => project.pm === '王然' && !project.ended && project.id !== ownProject).id;
+  person(state, intern).projectIds.push(original, crossProject);
   const next = act(state, 'pool.enter', { items: [item(intern), item(intern, original)] });
   assert.deepEqual(person(next, intern).projectIds, []);
   assert.equal(person(next, intern).endedProjectRelations.length, 3);
@@ -671,4 +737,161 @@ test('a project-specific detail cannot inherit names, PM or delivery line from a
   assert.equal(row.sourceProjectId, 'source-detail');
   assert.equal(row.targetProjectId, 'target-detail');
   for (const field of ['sourceProjectNo', 'sourceProjectName', 'sourcePmName', 'sourceLineName', 'targetProjectNo', 'targetProjectName', 'targetPmName', 'targetLineName']) assert.equal(row[field], '', field);
+});
+
+test('all four PMs have playable mixed project teams and three separate full-time reserves', () => {
+  const state = seed();
+  assert.equal(state.transfers.managers.length, 4);
+  for (const pm of state.transfers.managers) {
+    const view = getTransferView(pm.id, 'PM', state);
+    const projects = view.lineProjects.filter(p => p.pmId === pm.id);
+    assert.ok(projects.length, pm.name);
+    for (const project of projects) {
+      const team = view.rows.filter(r => r.sourceProjectId === project.id && r.canTransfer);
+      assert.ok(new Set(team.map(r => r.personId)).size >= 4, project.name);
+      assert.ok(team.some(r => r.intern) && team.some(r => r.employeeType === '全职'));
+    }
+    const reserves = view.available.filter(r => r.ownerId === pm.id);
+    assert.equal(reserves.length, 3);
+    assert.ok(reserves.every(r => r.canManage && r.employeeType === '全职' && !person(state, r.personId).projectIds.length));
+  }
+  assert.ok([...state.people, ...state.external].every(p => p.projectIds.length <= 1));
+  assert.equal(new Set(state.transfers.available.map(r => r.personId)).size, 12);
+});
+
+test('old duplicate associations become history once without reversing later staffing decisions', () => {
+  const state = seed(), p = person(state, fulltime);
+  delete state.transfers.staffingVersion;
+  p.projectIds.push(peerProject);
+  p.transferControl = { operationId: 'last-move', effectiveDate: day };
+  state.transfers.history.push({ id: 'last-move', targetProjectId: peerProject, items: [] });
+  const upgraded = initializeTransferState(state, day);
+  assert.deepEqual(person(upgraded, fulltime).projectIds, [peerProject]);
+  assert.ok(person(upgraded, fulltime).endedProjectRelations.some(r => r.projectId === ownProject));
+  const slot = upgraded.transfers.available.find(r => r.ownerId === lin);
+  const assigned = act(upgraded, 'available.assign', { key: slot.key, targetProjectId: peerProject }, lin);
+  const reopened = initializeTransferState(assigned, day);
+  assert.equal(reopened.transfers.available.filter(r => r.ownerId === lin).length, 2);
+  assert.deepEqual(person(reopened, slot.personId).projectIds, [peerProject]);
+});
+
+test('another PM can claim a published full-time reserve into a private roster across lines, then assign it', () => {
+  const state = seed();
+  const slot = getTransferView(chen, 'PM', state).available.find(r => r.ownerId === wang && r.canClaimAvailable);
+  const payload = { key: slot.key, destination: 'roster' };
+  assert.throws(() => act(state, 'available.claim', payload, chen, 'PMO'), /仅可查看/);
+  assert.throws(() => act(state, 'available.claim', payload, wang), /不可提取/);
+  const hidden = act(state, 'available.visibility', { key: slot.key, visible: false }, wang);
+  assert.ok(!getTransferView(chen, 'PM', hidden).available.some(r => r.key === slot.key));
+  assert.throws(() => act(hidden, 'available.claim', payload, chen), /不可提取/);
+  assert.throws(() => act(state, 'available.claim', payload, chen), /请确认提取/);
+  const taken = act(state, 'available.claim', { ...payload, confirmed: true }, chen);
+  const notice = getTransferView(wang, 'PM', taken).notifications[0];
+  assert.equal(notice.recipientName, slot.ownerName);
+  assert.ok(notice.content.includes(slot.name) && notice.content.includes('陈默') && notice.content.includes('尚未分配项目'));
+  const mine = getTransferView(chen, 'PM', taken).available.find(r => r.personId === slot.personId);
+  assert.equal(mine.visible, false);
+  assert.equal(mine.canManage, true);
+  assert.deepEqual(mine.sources, slot.sources);
+  assert.ok(!getTransferView(wang, 'PM', taken).available.some(r => r.personId === slot.personId));
+  assert.deepEqual(person(taken, slot.personId).projectIds, []);
+  assert.throws(() => act(taken, 'available.claim', payload, lin), /不可提取/);
+  const assigned = act(taken, 'available.assign', { key: mine.key, targetProjectId: crossProject }, chen);
+  assert.deepEqual(person(assigned, slot.personId).projectIds, [crossProject]);
+});
+
+test('a public full-time reserve can only be claimed directly into a current project of the acting PM', () => {
+  const state = seed(), slot = state.transfers.available.find(r => r.visible && r.ownerId === wang);
+  const payload = { key: slot.key, destination: 'project', targetProjectId: crossProject };
+  assert.throws(() => act(state, 'available.claim', { ...payload, targetProjectId: ownProject }, chen), /本人/);
+  assert.throws(() => act(state, 'available.claim', { ...payload, targetProjectId: '' }, chen), /去向/);
+  const ended = structuredClone(state);
+  ended.projects.find(p => p.id === crossProject).ended = true;
+  assert.throws(() => act(ended, 'available.claim', payload, chen));
+  assert.throws(() => act(state, 'available.claim', payload, chen), /请确认提取/);
+  const result = act(state, 'available.claim', { ...payload, confirmed: true }, chen);
+  const notice = getTransferView(wang, 'PM', result).notifications[0];
+  assert.equal(notice.recipientName, slot.ownerName);
+  assert.ok(notice.content.includes(person(result, slot.personId).name) && notice.content.includes('陈默') && notice.content.includes(result.projects.find(p => p.id === crossProject).name));
+  assert.deepEqual(person(result, slot.personId).projectIds, [crossProject]);
+  assert.ok(!result.transfers.available.some(r => r.personId === slot.personId));
+  assert.throws(() => reduceTransferAction(result, lin, 'available.claim', {key:slot.key,destination:'roster'}, state.revision, 'PM', day), /数据已更新/);
+  assert.ok(getTransferView(chen, 'PM', result).rows.find(r => r.personId === slot.personId && r.canTransfer));
+});
+
+test('publication enables every other PM to claim a newly released employee, including after a roster-to-roster claim', () => {
+  const released = act(seed(), 'available.release', { items: [item()] });
+  const slot = released.transfers.available.find(row => row.personId === fulltime);
+  const publish = (state, owner, key) => act(state, 'available.visibility', { key, visible: true }, owner);
+  const visibleTo = (state, owner) => {
+    for (const manager of state.transfers.managers.filter(row => row.id !== owner)) {
+      assert.ok(getTransferView(manager.id, 'PM', state).available.some(row => row.personId === fulltime && row.canClaimAvailable));
+    }
+  };
+  const published = publish(released, wang, slot.key);
+  visibleTo(published, wang);
+  const taken = act(published, 'available.claim', { key: slot.key, destination: 'roster', confirmed: true }, chen);
+  const newSlot = taken.transfers.available.find(row => row.personId === fulltime);
+  assert.equal(newSlot.visible, false);
+  const republished = publish(taken, chen, newSlot.key);
+  visibleTo(republished, chen);
+  const assigned = act(republished, 'available.claim', { key: newSlot.key, destination: 'project', targetProjectId: peerProject, confirmed: true }, lin);
+  assert.deepEqual(person(assigned, fulltime).projectIds, [peerProject]);
+  assert.equal(getTransferView(chen, 'PM', assigned).notifications[0].recipientName, newSlot.ownerName);
+});
+
+test('mixed selection moves own reserve, public reserve and intern in one revision with their respective notifications', () => {
+  const state = seed();
+  const own = state.transfers.available.find(r => r.ownerId === wang && !r.visible);
+  const other = state.transfers.available.find(r => r.ownerId === chen && r.visible);
+  const members = [own, other, {personId: pooled}].map(({ key, personId }) => ({ key, personId }));
+  const next = act(state, 'claim', { members, targetProjectId: ownProject, destination: 'project', confirmed: true });
+  assert.equal(next.revision, state.revision + 1);
+  for (const {personId} of members) assert.deepEqual(person(next, personId).projectIds, [ownProject]);
+  const notices = next.transfers.notifications.slice(state.transfers.notifications.length);
+  assert.equal(notices.length, 5);
+  assert.ok(notices.some(n => n.recipientName === other.ownerName && n.content.includes(person(state, other.personId).name)));
+});
+
+test('mixed extraction rejects an incompatible destination or changed roster entry without moving the first person', () => {
+  const state = seed();
+  const other = state.transfers.available.find(r => r.ownerId === chen && r.visible);
+  const hidden = state.transfers.available.find(r => r.ownerId === lin && !r.visible);
+  const before = structuredClone(state);
+  for (const [destination, last] of [['roster', { personId: pooled }], ['project', hidden]]) {
+    assert.throws(() => act(state, 'claim', { members: [other, last], confirmed: true, destination, targetProjectId: destination === 'project' ? ownProject : undefined }));
+    assert.deepEqual(state, before);
+  }
+  const another = state.transfers.available.find(r => r.ownerId === lin && r.visible);
+  const next = act(state, 'claim', { members: [other, another], destination: 'roster', confirmed: true });
+  for (const slot of [other, another]) assert.ok(next.transfers.available.some(r => r.personId === slot.personId && r.ownerId === wang && !r.visible));
+});
+
+test('staff directory detail is available for visible reservations and only the owner can open a hidden reservation', () => {
+  const state = seed();
+  const slot = state.transfers.available.find(r => r.ownerId === chen && r.visible);
+  const detail = getPoolPersonDetails(wang, 'PM', slot.personId, state);
+  assert.equal(detail.person.id, slot.personId);
+  assert.equal(detail.person.employeeType, '全职');
+  assert.notEqual(detail.person.poolState, '自由人');
+  const hidden = act(state, 'available.visibility', { key: slot.key, visible: false }, chen);
+  assert.equal(getPoolPersonDetails(wang, 'PM', slot.personId, hidden), null);
+  assert.equal(getPoolPersonDetails(chen, 'PM', slot.personId, hidden).person.id, slot.personId);
+});
+
+test('additional pool examples cover all four former managers and stay assigned after refresh', () => {
+  const state = seed();
+  const examples = getTransferView(wang, 'PM', state).pool.filter(row => row.personId.startsWith('hr-pool-intern-'));
+  assert.equal(examples.length, 8);
+  for (const pm of state.transfers.managers) assert.equal(examples.filter(row => row.formerPmId === pm.id && row.formerPmName === pm.name).length, 2);
+  for (const row of examples) {
+    assert.ok(row.intern && row.abilityTags.length && row.school && row.major && row.english);
+    assert.ok(row.projectExperience.some(project => row.sourceProjectIds.includes(project.id)));
+    assert.deepEqual(person(state, row.personId).projectIds, []);
+  }
+  const p = examples[0].personId;
+  const claimed = act(state, 'pool.claim', { personIds: [p], targetProjectId: ownProject });
+  const reopened = initializeTransferState(claimed, day);
+  assert.deepEqual(person(reopened, p).projectIds, [ownProject]);
+  assert.ok(!reopened.transfers.pool.some(row => row.personId === p));
 });

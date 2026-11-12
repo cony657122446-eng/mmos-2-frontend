@@ -91,7 +91,7 @@ export default function HrPersonnelDetails({ person, role, view, onNavigate, ini
       ]} />
     </> },
     { key: 'career', label: '职业履历', children: <HrCareerPanel role={role} personId={person.id} /> },
-    { key: 'attendance', label: '出勤记录', children: <>
+    { key: 'attendance', label: '飞书月度出勤记录', children: <>
       <HrAttendancePanel role={role} personId={person.id} />
       <Fields title="出勤概况" data={person} emptyText={emptyText} fields={[
         ['attendanceStatus', '人员出勤状态'], ['attendanceRecordId', '出勤记录关联'], ['personnelAnomalies', '人员异常记录 · 来源范围待核对'],

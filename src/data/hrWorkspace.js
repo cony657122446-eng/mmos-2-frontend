@@ -98,23 +98,23 @@ export function createHrSeed(day = beijingToday()) {
   const now = `${day}T01:00:00.000Z`;
   const base = (id, name, n, projectIds = [p1]) => ({ id, name, employeeNo: `MCE${String(n).padStart(8, '0')}`, recruitmentNo: `招聘-模拟-${n}`, category: '内部人员', sourceSystem: 'MMOS1', sourceId: `demo-source-${id}`, candidate: true, sourceReadAt: now, sourceSnapshot: { day1: '培训中', trainingResult: '待确定' }, arrivalDate: day, projectIds, positionId: 'pos-1', departmentId: 'dept-9-5', locationId: 'loc-1', manager: projectIds[0] === p2 ? '陈默' : '王然', employeeType: '全职', stage: '试用期', gender: '女', phone: `电话-${n}`, email: `demo${n}@example.test`, enterpriseAccount: `demo${n}@mmos.example.test`, personalAccount: `个人账号-模拟-${n}`, trainingStart: offsetDate(day, -4), entryDate: offsetDate(day, -4), probationDate: offsetDate(day, -4), firstWorkDate: offsetDate(day, -4), day1: '通过', trainingResult: '通过', subsidyDays: null, subsidyAmount: null, accountCreatedAt: `${offsetDate(day, -4)}T01:00:00.000Z`, accountActive: true, contractSigned: true, materialsComplete: true, missingFields: [], intent: '确认入职', masterCreated: true, checklistCreated: true, checklistCompleted: true, specialPlans: [], recruiter: '招聘同事', appliedPosition: '数据标注员', school: '大学', education: '本科', major: '语言学', graduation: '2025年6月', english: 'CET6', trainingPassedDate: offsetDate(day, -3), candidateNote: '入职记录' });
   const people = [
-    base('hr-1', '林悦', 1831, [p1, p4]),
+    { ...base('hr-1', '林悦', 1831, [p1]), endedProjectRelations: [{ projectId: p4, endedDate: day, reason: '统一为单项目关联', evidence: 'single-project-roster-v1' }] },
     { ...base('hr-2', '陈可', 1832, [p2]), positionId: 'pos-2', departmentId: 'dept-9-2', employeeType: '在校实习生', stage: '实习期', specialPlans: ['晨星计划'] },
     { ...base('hr-3', '许宁', 1833), contractSigned: false, checklistCompleted: false, specialPlans: ['魔鬼训练营'] },
     { ...base('hr-4', '周航', 1834), resignation: { status: '通过', effectiveDate: offsetDate(day, 5), evidence: '模拟有效审批-001' }, employeeType: '劳务返聘', stage: '劳务返聘' },
     { ...base('hr-5', '唐安', 1835), projectIds: [], resignation: { status: '通过', effectiveDate: offsetDate(day, -1), evidence: '模拟有效审批-002' }, trainingStart: offsetDate(day, -40) },
-    { ...base('hr-6', '待评定', 1836), masterCreated: false, checklistCreated: false, checklistCompleted: false, day1: '培训中', trainingResult: '', trainingStart: day, trainingPassedDate: '', intent: '', accountCreatedAt: '', accountActive: null, contractSigned: null, materialsComplete: false, missingFields: ['尚未提交资料'], stage: '', enterpriseAccount: '' },
-    { ...base('hr-7', '第二天', 1837, [p2]), masterCreated: false, checklistCreated: false, checklistCompleted: false, trainingResult: '', trainingStart: offsetDate(day, -1), trainingPassedDate: '', intent: '', accountCreatedAt: '', accountActive: null, contractSigned: null, materialsComplete: false, missingFields: ['尚未提交资料'], stage: '', enterpriseAccount: '' },
-    { ...base('hr-8', '待确认入职', 1838), masterCreated: false, checklistCompleted: false, intent: '', contractSigned: false, stage: '' },
-    { ...base('hr-9', '待激活', 1839), masterCreated: false, checklistCompleted: false, accountActive: false, contractSigned: false, materialsComplete: false, missingFields: ['学历证明附件'], stage: '' },
-    { ...base('hr-10', '待关联资料', 1840), masterCreated: false, checklistCompleted: false, contractSigned: false, materialsComplete: null, missingFields: [], integrationIssue: '资料与候选人关联待核对，不属于员工漏填', stage: '' },
-    { ...base('hr-11', '培训淘汰', 1841), masterCreated: false, checklistCreated: false, checklistCompleted: false, trainingResult: '淘汰', subsidyDays: 1.5, subsidyAmount: 120, intent: '', stage: '' },
-    { ...base('hr-12', '培训储备', 1842), masterCreated: false, checklistCreated: false, checklistCompleted: false, trainingResult: '培训储备', intent: '', stage: '' },
+    { ...base('hr-6', '宋雨桐', 1836), masterCreated: false, checklistCreated: false, checklistCompleted: false, day1: '培训中', trainingResult: '', trainingStart: day, trainingPassedDate: '', intent: '', accountCreatedAt: '', accountActive: null, contractSigned: null, materialsComplete: false, missingFields: ['尚未提交资料'], stage: '', enterpriseAccount: '' },
+    { ...base('hr-7', '何书瑶', 1837, [p2]), masterCreated: false, checklistCreated: false, checklistCompleted: false, trainingResult: '', trainingStart: offsetDate(day, -1), trainingPassedDate: '', intent: '', accountCreatedAt: '', accountActive: null, contractSigned: null, materialsComplete: false, missingFields: ['尚未提交资料'], stage: '', enterpriseAccount: '' },
+    { ...base('hr-8', '温予宁', 1838), masterCreated: false, checklistCompleted: false, intent: '', contractSigned: false, stage: '' },
+    { ...base('hr-9', '邓思妍', 1839), masterCreated: false, checklistCompleted: false, accountActive: false, contractSigned: false, materialsComplete: false, missingFields: ['学历证明附件'], stage: '' },
+    { ...base('hr-10', '周以晴', 1840), masterCreated: false, checklistCompleted: false, contractSigned: false, materialsComplete: null, missingFields: [], integrationIssue: '资料与候选人关联待核对，不属于员工漏填', stage: '' },
+    { ...base('hr-11', '蒋若琳', 1841), masterCreated: false, checklistCreated: false, checklistCompleted: false, trainingResult: '淘汰', subsidyDays: 1.5, subsidyAmount: 120, intent: '', stage: '' },
+    { ...base('hr-12', '余清禾', 1842), masterCreated: false, checklistCreated: false, checklistCompleted: false, trainingResult: '培训储备', intent: '', stage: '' },
   ];
   const external = [
-    { id: 'ext-1', name: '兼职方晴', employeeNo: 'EXT-DEMO-001', externalNo: 'EXT-DEMO-001', projectIds: [p1], category: '外部人员', employeeType: '兼职', current: true },
-    { id: 'ext-2', name: '兼职吴远', employeeNo: 'EXT-DEMO-002', externalNo: 'EXT-DEMO-002', projectIds: [p2], category: '外部人员', employeeType: '兼职', current: true },
-    { id: 'ext-3', name: '已离项', employeeNo: 'EXT-DEMO-003', externalNo: 'EXT-DEMO-003', projectIds: [], category: '外部人员', employeeType: '兼职', current: false },
+    { id: 'ext-1', name: '方晴', employeeNo: 'EXT-DEMO-001', externalNo: 'EXT-DEMO-001', projectIds: [p1], category: '外部人员', employeeType: '兼职', current: true },
+    { id: 'ext-2', name: '吴远', employeeNo: 'EXT-DEMO-002', externalNo: 'EXT-DEMO-002', projectIds: [p2], category: '外部人员', employeeType: '兼职', current: true },
+    { id: 'ext-3', name: '潘言初', employeeNo: 'EXT-DEMO-003', externalNo: 'EXT-DEMO-003', projectIds: [], category: '外部人员', employeeType: '兼职', current: false },
   ];
   const outputs = [
     { id: 'out-1', personId: 'hr-1', projectId: p1, date: offsetDate(day, -1), quantity: 180, unit: '条', category: '内部人员' },
@@ -130,8 +130,8 @@ export function createHrSeed(day = beijingToday()) {
     { id: 'att-3', personId: 'ext-1', projectId: p1, date: offsetDate(day, -1), hours: 4, category: '外部人员' },
   ];
   const intakes = [
-    { id: 'intake-demo-1', serial: 'ZL-DEMO-001', requestId: 'demo-request-1', values: { ...demoIntake('待关联资料', '电话-1840'), recruitmentNo: '招聘-模拟-1840' }, candidateId: '', submittedAt: now, complete: true, status: '未关联', submitter: '' },
-    { id: 'intake-demo-2', serial: 'ZL-DEMO-002', requestId: 'demo-request-2', values: { ...demoIntake('独立填报', '电话-独立'), recruitmentNo: '招聘-模拟-1900' }, candidateId: '', submittedAt: now, complete: true, status: '未关联', submitter: '' },
+    { id: 'intake-demo-1', serial: 'ZL-DEMO-001', requestId: 'demo-request-1', values: { ...demoIntake('周以晴', '电话-1840'), recruitmentNo: '招聘-模拟-1840' }, candidateId: '', submittedAt: now, complete: true, status: '未关联', submitter: '' },
+    { id: 'intake-demo-2', serial: 'ZL-DEMO-002', requestId: 'demo-request-2', values: { ...demoIntake('董欣然', '电话-独立'), recruitmentNo: '招聘-模拟-1900' }, candidateId: '', submittedAt: now, complete: true, status: '未关联', submitter: '' },
   ];
   const result = { schema: 1, revision: 1, people, external, intakes, departments, locations, positions, projects, outputs, attendance, audit: [], nextEmployeeNumber: 1843, nextIntakeNumber: 3, fieldPermissions: { hrSalary: true, financeSalary: false }, sync: { status: '来源快照', lastSuccess: now, cadenceMinutes: 30, note: '尚未连接 MMOS1、飞书账号、审批及合同结果接口' } };
   addPreviewSources(result, day);
@@ -366,8 +366,50 @@ function reconcileHrMatches(state, day = beijingToday()) {
   }
 }
 
+// Upgrade only the original fixture identities while preserving names entered by users.
+function upgradePersonnelSampleNames(state) {
+  if (state.personnelSampleNamesVersion >= 1) return;
+  const aliases = {
+    'demo-source-hr-6': ['待评定', '宋雨桐'], 'demo-source-hr-7': ['第二天', '何书瑶'],
+    'demo-source-hr-8': ['待确认入职', '温予宁'], 'demo-source-hr-9': ['待激活', '邓思妍'],
+    'demo-source-hr-10': ['待关联资料', '周以晴'], 'demo-source-hr-11': ['培训淘汰', '蒋若琳'],
+    'demo-source-hr-12': ['培训储备', '余清禾'], 'functional-demo': ['职能候选', '陶可欣'],
+    'supplement-demo-1': ['补采候选', '董欣然'], 'supplement-demo-2': ['兼职补采', '叶书桐'],
+  };
+  const rename = (row, pair) => { if (pair && row?.name === pair[0]) row.name = pair[1]; };
+  for (const person of [...state.people, ...state.external]) {
+    if (person.sourceSystem === 'MMOS1') {
+      const pair = aliases[person.sourceId];
+      rename(person, pair);
+      rename(person.sourceSnapshot, pair);
+    }
+  }
+  for (const [id, number, old, name] of [
+    ['ext-1','EXT-DEMO-001','兼职方晴','方晴'], ['ext-2','EXT-DEMO-002','兼职吴远','吴远'], ['ext-3','EXT-DEMO-003','已离项','潘言初'],
+  ]) rename(state.external.find(p => p.id === id && p.employeeNo === number), [old, name]);
+  for (const row of state.sourceRows || []) rename(row, aliases[row.sourceId]);
+  for (const [id, requestId, old, name] of [
+    ['intake-demo-1','demo-request-1','待关联资料','周以晴'], ['intake-demo-2','demo-request-2','独立填报','董欣然'],
+  ]) {
+    const intake = state.intakes.find(i => i.id === id && i.requestId === requestId);
+    rename(intake?.values, [old, name]);
+    if (intake?.candidateId) rename(state.people.find(p => p.id === intake.candidateId && p.intakeId === id)?.intakeProfile, [old, name]);
+  }
+  for (const [id, pa, newPa, qa, newQa] of [
+    ['DEMO-TRANSFER-WR-01', '助理小禾', '梁禾', '质检小宁', '郭安宁'],
+    ['DEMO-TRANSFER-LXT-01', '助理小雨', '陈雨舒', '质检小夏', '夏芷'],
+    ['DEMO-TRANSFER-CM-01', '助理小林', '林璐', '质检小安', '谢安然'],
+  ]) {
+    const project = state.projects.find(p => p.id === id && p.demo === true);
+    if (project?.pa === pa) project.pa = newPa;
+    if (project?.qa === qa) project.qa = newQa;
+  }
+  state.personnelSampleNamesVersion = 1;
+}
+
 export function reconcileHrState(previous, day = beijingToday(), now = Date.now()) {
   const state = clone(previous);
+  upgradePersonnelSampleNames(state);
   reconcileLifecycle(state, day, Number(new Date(now)));
   ensurePersonnelContracts(state, day);
   ensureHrAttendance(state, day);
@@ -605,7 +647,11 @@ export function mergeHrSource(previous, rows, day = beijingToday(), options = {}
       if (person.transferControl) {
         const incoming = [...new Set(source.projectIds)].sort();
         if (JSON.stringify(incoming) !== JSON.stringify([...person.projectIds].sort())) recordConflict(source, '来源项目关联与已执行调配不一致，保留调配结果并待核对');
-      } else person.projectIds = source.projectIds.filter(id => state.projects.some(p => p.id === id && !p.ended) && !(person.endedProjectRelations || []).some(r => r.projectId === id));
+      } else {
+        const incoming = [...new Set(source.projectIds.filter(id => state.projects.some(p => p.id === id && !p.ended) && !(person.endedProjectRelations || []).some(r => r.projectId === id)))];
+        if (incoming.length > 1) recordConflict(source, '来源包含多个当前项目，保留原关联并待核对');
+        else person.projectIds = incoming;
+      }
     }
     person.recruitmentNo = recruitmentNo;
     person.trainingStart ||= source.arrivalDate;
@@ -628,14 +674,14 @@ function addPreviewSources(state, day) {
     state.workCalendar.days[date] ??= weekday !== 0 && weekday !== 6;
   }
   state.sourceRows ||= [
-    { sourceId: 'supplement-demo-1', name: '补采候选', recruitmentNo: '招聘-模拟-1900', arrivalDate: offsetDate(day, -2), appliedPosition: '职能助理', day1: '培训中', departmentId: 'dept-8', functional: true, projectIds: [] },
-    { sourceId: 'supplement-demo-2', name: '兼职补采', recruitmentNo: '招聘-模拟-1901', arrivalDate: day, appliedPosition: '兼职', day1: '培训中', projectIds: [state.projects[0]?.id].filter(Boolean) },
+    { sourceId: 'supplement-demo-1', name: '董欣然', recruitmentNo: '招聘-模拟-1900', arrivalDate: offsetDate(day, -2), appliedPosition: '职能助理', day1: '培训中', departmentId: 'dept-8', functional: true, projectIds: [] },
+    { sourceId: 'supplement-demo-2', name: '叶书桐', recruitmentNo: '招聘-模拟-1901', arrivalDate: day, appliedPosition: '兼职', day1: '培训中', projectIds: [state.projects[0]?.id].filter(Boolean) },
   ];
   const department = state.departments.find(d => d.id === 'dept-8');
   if (department && department.managerAccount == null) department.managerAccount = HR_DEPARTMENT_MANAGER_ACCOUNT;
   if (!state.people.some(p => p.id === 'hr-functional-demo')) {
     const next = Math.max(state.nextEmployeeNumber || 1, ...state.people.filter(p => /^MCE\d{8}$/.test(p.employeeNo || '')).map(p => Number(p.employeeNo.slice(3)) + 1));
-    state.people.push({ id: 'hr-functional-demo', sourceId: 'functional-demo', sourceSystem: 'MMOS1', name: '职能候选', employeeNo: `MCE${String(next).padStart(8, '0')}`, recruitmentNo: '招聘-职能-模拟-001', candidate: true, functional: true, departmentId: 'dept-8', positionId: '', locationId: 'loc-1', manager: '部门经理', projectIds: [], day1: '通过', trainingResult: '', arrivalDate: day, trainingStart: day, appliedPosition: '职能助理', category: '内部人员', employeeType: '全职', masterCreated: false, checklistCreated: false, materialsComplete: false, missingFields: ['尚未提交资料'], accountActive: null, contractSigned: null, intent: '', specialPlans: [] });
+    state.people.push({ id: 'hr-functional-demo', sourceId: 'functional-demo', sourceSystem: 'MMOS1', name: '陶可欣', employeeNo: `MCE${String(next).padStart(8, '0')}`, recruitmentNo: '招聘-职能-模拟-001', candidate: true, functional: true, departmentId: 'dept-8', positionId: '', locationId: 'loc-1', manager: '部门经理', projectIds: [], day1: '通过', trainingResult: '', arrivalDate: day, trainingStart: day, appliedPosition: '职能助理', category: '内部人员', employeeType: '全职', masterCreated: false, checklistCreated: false, materialsComplete: false, missingFields: ['尚未提交资料'], accountActive: null, contractSigned: null, intent: '', specialPlans: [] });
   }
   state.nextEmployeeNumber = Math.max(state.nextEmployeeNumber || 1, 1844);
   state.previewRevision = 2;
@@ -1022,7 +1068,12 @@ export function mergeHrOutputFacts(previous, rows, options = {}, day = beijingTo
             record.category = '待核对';
             record.reason = '同一业务日存在多个项目来源，保留最近可信关系';
           } else if (!latest || source.date >= latest.date) person.projectIds = [project.id];
-        } else person.projectIds = [...new Set([...person.projectIds,project.id])];
+        } else if (person.projectIds.length === 0) {
+          person.projectIds = [project.id];
+        } else if (person.projectIds.length && !person.projectIds.includes(project.id) && !(person.endedProjectRelations || []).some(r => r.projectId === project.id && source.date <= r.endedDate)) {
+          record.category = '待核对';
+          record.reason = '产出与当前项目不一致，保留当前项目关联';
+        }
       }
     }
     const index = state.outputs.findIndex(r => r.id === record.id);
