@@ -31,6 +31,7 @@ const navigationSections = [
       { id: 'people-external', label: '外部人员', icon: UsersRound },
     ],
     management: { id: 'people-changes', label: '人事变动', icon: CalendarClock, items: [
+      { id: 'hr-renewals', label: '续签管理' },
       { id: 'hr-onboarding', label: '入职清单' },
       { id: 'hr-intakes', label: '入职资料表' },
       { id: 'hr-delivery-line-changes', label: '交付线变更记录' },
@@ -39,22 +40,22 @@ const navigationSections = [
   },
   {
     id: 'finance', label: '财务', items: [
-      { id: 'finance-journal', label: '日记账', icon: WalletCards },
+      { id: 'finance-journal', label: '银行流水与日记账', icon: WalletCards },
+      { id: 'finance-settlement', label: '兼职结算', icon: ReceiptText },
       { id: 'finance-invoices', label: '发票与回款', icon: ReceiptText },
       { id: 'finance-costs', label: '职位成本', icon: ClipboardList },
-      { id: 'finance-settlement', label: '兼职结算', icon: WalletCards },
       { id: 'finance-approvals', label: '财务审批记录', icon: FileText },
       { id: 'finance-contracts', label: '公司合同管理', icon: FileText },
     ],
   },
 ];
 
-const pageTitles = {
+const pageTitles = { 'hr-renewals':'续签管理', 'finance-settlement':'兼职结算',
   'recruitment-submissions': '招聘提报',
   'hr-personnel-contracts': '人员合同管理',
   ...Object.fromEntries(HR_CHANGE_TYPES.map(item => [item.page, item.title])),
   overview: '工作台', requirements: '需求列表', projects: '项目主库', initiation: '立项申请', trial: '试标管理', quotation: '报价管理', 'output-attendance': '产出与出勤', acceptance: '验收管理',
-  'hr-organization':'组织管理', 'hr-candidates':'候选人库', 'hr-onboarding':'入职清单', 'hr-intakes':'入职资料表', 'hr-delivery-line-changes':'交付线变更记录', 'people-external':'外部人员', 'project-people':'在项人员', 'project-intern-pool':'待分配人员', 'hr-overview': '人事总览', 'people-master': '人员主库', 'people-changes': '人事变动', 'finance-customers': '客户主库', 'finance-invoices': '发票与回款', 'finance-journal': '日记账', 'finance-costs': '职位成本', 'finance-settlement': '兼职结算', 'finance-approvals': '财务审批记录', 'finance-contracts': '公司合同管理', 'expense-ledger': '报销台账', todos: '待办列表',
+  'hr-organization':'组织管理', 'hr-candidates':'候选人库', 'hr-onboarding':'入职清单', 'hr-intakes':'入职资料表', 'hr-delivery-line-changes':'交付线变更记录', 'people-external':'外部人员', 'project-people':'在项人员', 'project-intern-pool':'待分配人员', 'hr-overview': '人事总览', 'people-master': '人员主库', 'people-changes': '人事变动', 'finance-customers': '客户主库', 'finance-invoices': '发票与回款', 'finance-journal': '银行流水与日记账', 'finance-costs': '职位成本', 'finance-approvals': '财务审批记录', 'finance-contracts': '公司合同管理', 'expense-ledger': '报销台账', todos: '待办列表',
 };
 
 export function getPageTitle(id) { return pageTitles[id] || '工作台'; }
@@ -83,7 +84,7 @@ function navigationForRole(role) {
         items: section.items.filter(item => role === '人事' || allowed.includes(item.id)) };
     }
     if (section.id === 'finance' && role !== '财务') {
-      return { ...section, items: section.items.filter(item => item.id === 'finance-costs') };
+      return { ...section, items: section.items.filter(item => (item.id === 'finance-costs' || role === '人事' && item.id === 'finance-settlement')) };
     }
     return section;
   });

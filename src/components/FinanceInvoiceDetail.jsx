@@ -178,7 +178,7 @@ export function FinanceInvoiceDetail({ row, customers = [], editable = false, ed
   };
   const renderField = field => {
     const key = field.name || field.derived;
-    if (isEditing && !field.derived && !['recordNo', 'projectNo', 'projectName', 'customerKey', 'acceptanceAmount', ...(row.groupId ? ['received', 'arrivedAt', 'taxIncluded', 'invoiceNo', 'invoiceDate', 'attachment'] : [])].includes(field.name)) return <Form.Item key={key} name={field.name} label={field.label}>{control(field)}</Form.Item>;
+    if (isEditing && !field.derived && !['received', 'arrivedAt', 'recordNo', 'projectNo', 'projectName', 'customerKey', 'acceptanceAmount', ...(row.groupId ? ['received', 'arrivedAt', 'taxIncluded', 'invoiceNo', 'invoiceDate', 'attachment'] : [])].includes(field.name)) return <Form.Item key={key} name={field.name} label={field.label}>{control(field)}</Form.Item>;
     const value = fieldValue(field);
     const isImage = field.name === 'evidence' && typeof value === 'string' && /^data:image\//.test(value);
     return <div key={key} className="finance-invoice-field-readonly"><small>{field.label}</small>{isImage ? <img className="quote-voucher-preview" src={value} alt="交付依据截图" /> : <strong>{value}</strong>}</div>;
@@ -189,12 +189,12 @@ export function FinanceInvoiceDetail({ row, customers = [], editable = false, ed
       <div className="detail-screen-main"><button className="detail-back" onClick={onBack}>返回列表</button><div className="detail-screen-kicker">{shown(row.recordNo)}</div><h1>{shown(row.projectName)}</h1></div>
       <Space wrap>
         <Tag color={derived.stage === '已回款' ? 'success' : 'processing'}>{derived.stage}</Tag>
-        {isEditing ? <><Button onClick={onCancel}>取消</Button><Button type="primary" onClick={() => form.submit()}>保存修改</Button></> : editable && <><Button onClick={() => onEdit?.(row)}>编辑全部内容</Button>{derived.stage === '待开票' && <Button type="primary" onClick={() => onIssue?.(row)}>确认开票</Button>}{derived.stage !== '待开票' && !row.migrationIssue && <Button onClick={() => onReceipt?.(row)}>登记回款</Button>}</>}
+        {isEditing ? <><Button onClick={onCancel}>取消</Button><Button type="primary" onClick={() => form.submit()}>保存修改</Button></> : editable && <><Button onClick={() => onEdit?.(row)}>编辑全部内容</Button>{derived.stage === '待开票' && <Button type="primary" onClick={() => onIssue?.(row)}>确认开票</Button>}{derived.stage !== '待开票' && !row.migrationIssue && <Button onClick={() => onReceipt?.(row)}>关联回款</Button>}</>}
       </Space>
     </div>
     {row.migrationIssue && <Alert type="warning" showIcon title={row.migrationIssue} />}
     {isEditing && <p className="modal-help-copy">仅更正当前台账资料。项目、客户和验收来源归属保持关联；合票发票信息与回款分配通过整票操作维护。</p>}
-    {row.groupId && <p className="modal-help-copy">合并开票 · 当前金额为本条验收口径，登记回款时查看整票金额及各验收手动分配。</p>}
+    {row.groupId && <p className="modal-help-copy">合并开票 · 当前金额为本条验收口径，关联回款时查看整票金额及各验收手动分配。</p>}
     <Form name="finance-invoice-detail" form={form} layout="vertical" preserve onFinish={submit}>
       {isEditing && <Form.Item name="customer" hidden><Input /></Form.Item>}
       <Tabs items={groups.map(group => ({ key: group.key, label: group.title, forceRender: true, children: <div className={`finance-invoice-fields${isEditing ? '' : ' quote-field-grid'}`}>{group.fields.map(renderField)}</div> }))} />
