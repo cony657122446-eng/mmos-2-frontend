@@ -20,7 +20,14 @@ const isCalendarDate = value => {
 export function loadFinanceLedger(fallback) {
   try {
     const saved = JSON.parse(localStorage.getItem(FINANCE_LEDGER_STORAGE_KEY) || 'null');
-    return isLedger(saved) ? saved : fallback;
+    if (!isLedger(saved)) return fallback;
+    // Retire only the two unchanged built-in rows from the removed settlement demo.
+    // User-entered payments and modified historical rows remain intact.
+    const journal = saved.journal.filter(row => !(
+      (row.key === 'j4' && row.summary === '星河兼职结算付款' && row.expense === 240 && row.payer === '李倩') ||
+      (row.key === 'demo-finance-v1-j-settlement' && row.summary === '已完成兼职结算' && row.expense === 1000 && row.payer === '人员5')
+    ));
+    return { ...saved, journal };
   } catch {
     return fallback;
   }

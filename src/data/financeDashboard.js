@@ -15,6 +15,7 @@ export function summarizeJournal(journal, { range = null, payer = 'all', grain =
   let openingCount = 0;
   for (const row of journal) {
     if (row.opening) { openingCount++; continue; }
+    if (row.transferId) continue;
     if (payer !== 'all' && row.payer !== payer) continue;
     if (!validDate(row.date)) { excluded.push({ ...row, reason: '日期缺失或无效，无法归入期间' }); continue; }
     if (range && (row.date < range[0] || row.date > range[1])) continue;
@@ -24,7 +25,7 @@ export function summarizeJournal(journal, { range = null, payer = 'all', grain =
     }
     if (!income && !expense) continue;
     const amount = income || expense;
-    const links = row.allocations || [];
+    const links = [...(row.allocations || []), ...(row.exemptions || []).map(e=>({...e,type:`无需关联 · ${e.category}`}))];
     const invalidLinks = !Array.isArray(links) || links.some(link => !Number.isSafeInteger(cents(link?.amount)) || cents(link?.amount) <= 0);
     const allocated = invalidLinks ? 0 : links.reduce((sum, link) => sum + cents(link.amount), 0);
     const allocationIssue = invalidLinks || allocated > amount;
@@ -43,7 +44,7 @@ export function summarizeJournal(journal, { range = null, payer = 'all', grain =
     if (row.expense) {
       if (row.allocationIssue) expenseTypes.set('关联待核对', (expenseTypes.get('关联待核对') || 0) + cents(row.expense));
       else {
-        for (const link of row.allocations || []) { const name = link.type || '其他已关联'; expenseTypes.set(name, (expenseTypes.get(name) || 0) + cents(link.amount)); }
+        for (const link of [...(row.allocations || []), ...(row.exemptions || []).map(e=>({...e,type:`无需关联 · ${e.category}`}))]) { const name = link.type || '其他已关联'; expenseTypes.set(name, (expenseTypes.get(name) || 0) + cents(link.amount)); }
         if (row.unlinked) expenseTypes.set('未关联支出', (expenseTypes.get('未关联支出') || 0) + cents(row.unlinked));
       }
     }

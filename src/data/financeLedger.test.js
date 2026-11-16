@@ -161,6 +161,19 @@ test('存储支持重新加载和空台账，拒绝损坏结构并向调用方�
     saveFinanceLedger(saved);
     assert.deepEqual(loadFinanceLedger(fallback), saved);
     assert.notEqual(loadFinanceLedger(fallback), saved);
+    const retiredSamples = [
+      { key: 'j4', summary: '星河兼职结算付款', expense: 240, payer: '李倩' },
+      { key: 'demo-finance-v1-j-settlement', summary: '已完成兼职结算', expense: 1000, payer: '人员5' },
+    ];
+    const retainedPayments = [
+      { ...retiredSamples[0], key: 'user-payment' },
+      { ...retiredSamples[1], expense: 1200 },
+      entry('unrelated-payment', 30, []),
+    ];
+    const previousLedger = { invoices: [], journal: [...retiredSamples, ...retainedPayments] };
+    saveFinanceLedger(previousLedger);
+    assert.deepEqual(loadFinanceLedger(fallback).journal, retainedPayments);
+    assert.deepEqual(JSON.parse(storage.get(FINANCE_LEDGER_STORAGE_KEY)), previousLedger);
     saveFinanceLedger({ invoices: [], journal: [] });
     assert.deepEqual(loadFinanceLedger(fallback), { invoices: [], journal: [] });
     for (const invalid of ['{', '{}', '{"invoices":[],"journal":null}', '{"invoices":[null],"journal":[]}']) {
