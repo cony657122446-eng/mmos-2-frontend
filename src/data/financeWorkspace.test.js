@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { combineInvoices, issueInvoice, registerReceipt, registerJournal, completeSettlements, approvalPayment, projectFinance, customerProjection, costProjection, financeAllowed, saveWorkspace, loadWorkspace } from './financeWorkspace.js';
+import { combineInvoices, issueInvoice, registerReceipt, registerJournal, approvalPayment, projectFinance, customerProjection, costProjection, financeAllowed, saveWorkspace, loadWorkspace } from './financeWorkspace.js';
 import { applyCostBatch, quarterMonths } from './financeCosts.js';
 import { CONTRACT_FIELDS, mergeContracts } from './financeContracts.js';
 const invoice = (key, amount, overrides = {}) => ({ key, recordNo: key, acceptanceNo: key, projectNo: `project-${key}`, projectName: `项目${key}`, customerKey: 'c1', customer: '客户', acceptanceAmount: amount, taxIncluded: amount, received: 0, invoiceNo: '', ...overrides });
@@ -45,13 +45,7 @@ test('审批实付只按自身关联金额回填，原通过金额保持', () =>
   assert.equal(approvalPayment(state.approvals[0], next.journal).paid, 600); assert.equal(approvalPayment(state.approvals[1], next.journal).paid, 300); assert.equal(next.approvals[0].amount, 800);
   assert.throws(() => registerJournal(state, { date: '2026-10-18', summary: '付款', payer: '人', expense: 10, allocations: [{ target: 'settlement', amount: 10 }] }), /仅关联/);
 });
-test('结算完成精确批次、实际日期与唯一支出；重复完成拒绝', () => {
-  const row = { key: 's1', sourceLineId: 'line1', projectMatched: true, projectNo: 'p1', projectName: '项目', approvalKey: 'ap1', period: '2026-10', idCode: 'mock-person', bankName: '测试', bankNo: 'mock-account', bank: '测试银行', quantity: 3, price: 1000, amount: 3000, inCost: true };
-  const state = { ...initial(), approvals: [{ key: 'ap1', status: '已读取', result: '审批通过' }], settlements: [row, { ...row, key: 's2', sourceLineId: 'line2', period: '2026-11' }] };
-  assert.throws(() => completeSettlements(state, ['s1', 's2'], '2026-10-18'), /同一周期/);
-  const next = completeSettlements(state, ['s1'], '2026-10-18'); assert.equal(next.journal.length, 1); assert.equal(next.journal[0].date, '2026-10-18'); assert.equal(next.journal[0].expense, 3000); assert.ok(next.settlements[0].inCost); assert.equal(next.settlements[1].completedAt, undefined);
-  assert.throws(() => completeSettlements(next, ['s1'], '2026-10-18'), /已完成/);
-});
+
 test('季度展开、重复新增逐条失败、未选单月保留、删除与0区别', () => {
   const positions = [{ key: 'p1', name: '岗位' }]; const edits = quarterMonths(2026, 4).map(month => ({ positionId: 'p1', month, daily: 800 }));
   let batch = applyCostBatch([], edits, 'add', positions); assert.equal(batch.rows.length, 3);

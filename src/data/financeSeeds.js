@@ -9,7 +9,6 @@ export const initialJournal = [
   { key: 'j1', date: '2026-09-18', summary: '星河智能客服开票回款', payer: '字节', income: 50000, expense: 0, note: '第一笔回款', allocations: [{ target: 'inv-1', type: '开票', name: '星河智能客服项目', amount: 50000 }] },
   { key: 'j2', date: '2026-09-20', summary: '海外内容审核回款', payer: '腾讯', income: 10000, expense: 0, note: '部分回款', allocations: [{ target: 'inv-2', type: '开票', name: '海外内容审核产线', amount: 10000 }] },
   { key: 'j3', date: '2026-09-21', summary: '语音质检开票回款', payer: '字节', income: 18000, expense: 0, note: '尾款待收', allocations: [{ target: 'inv-3', type: '开票', name: '语音质检专项', amount: 18000 }] },
-  { key: 'j4', date: '2026-09-22', summary: '星河兼职结算付款', payer: '李倩', income: 0, expense: 240, note: '兼职发放', allocations: [{ target: 'ZJ20260910922', type: '兼职结算', name: '星河智能客服项目', amount: 240 }] },
   { key: 'j5', date: '2026-09-23', summary: '项目差旅报销付款', payer: '王然', income: 0, expense: 860, note: '费用报销', allocations: [{ target: 'ap-2', type: '费用报销', name: '星河智能客服项目', amount: 860 }] },
   { key: 'j6', date: '2026-09-24', summary: '服务器采购对公付款', payer: '云服务供应商', income: 0, expense: 12000, note: '公司支出', allocations: [{ target: 'ap-3', type: '对公付款', name: '公司支出', amount: 12000 }] },
   { key: 'j7', date: '2026-09-25', summary: '项目备用金借款', payer: '王然', income: 0, expense: 0, note: '审批读取失败，不能登记实际付款', allocations: [] },

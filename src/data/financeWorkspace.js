@@ -41,7 +41,7 @@ export function legacyView(row) { return { ...row, buyer: row.payer, amountValue
 export function saveWorkspace(previous, next, action, actor = '财务 · 赵敏') {
   const stored = loadFinanceLedger(null);
   if (stored && (stored.revision || 0) !== (previous.revision || 0)) throw new Error('数据已变化，请刷新后重新操作');
-  const changes = ['customers', 'invoices', 'journal', 'costs', 'settlements', 'approvals'].flatMap(table => {
+  const changes = ['customers', 'invoices', 'journal', 'costs', 'settlements', 'approvals', 'bankAccounts', 'importBatches', 'parttimeDetails', 'projectPaymentCosts'].flatMap(table => {
     const before = new Map((previous[table] || []).map(row => [row.key, row]));
     const after = new Map((next[table] || []).map(row => [row.key, row]));
     return [...new Set([...before.keys(), ...after.keys()])].flatMap(key => {
@@ -135,26 +135,6 @@ export function approvalPayment(approval, journal) {
   const paid = round(journal.reduce((sum, entry) => sum + (entry.expense > 0 ? (entry.allocations || []).filter(link => link.target === approval.key || link.approvalKey === approval.key).reduce((total, link) => total + Number(link.amount), 0) : 0), 0));
   const approved = invoiceNumber(approval.amount);
   return { paid, unpaid: approved == null ? null : Math.max(0, round(approved - paid)), difference: approved == null ? null : round(paid - approved), paymentStatus: paid === 0 ? '未付款' : approved == null || paid < approved ? '部分付款' : '已付款' };
-}
-export function settlementError(row, state) {
-  const approval = state.approvals.find(item => item.key === row.approvalKey);
-  if (!approval || approval.status !== '已读取' || approval.result !== '审批通过') return '来源审批尚未成功读取并通过';
-  if (!row.sourceLineId || !row.projectMatched || !row.projectNo || !row.projectName || !row.idCode || !row.bankName || !row.bankNo || !row.bank) return '来源身份、项目匹配或收款资料不完整';
-  if ([row.quantity, row.price, row.amount].some(value => invoiceNumber(value) == null || Number(value) < 0) || round(row.quantity * row.price) !== round(row.amount)) return '结算量 × 单价与应发金额不符';
-  if (state.settlements.some(other => other.key !== row.key && (other.sourceLineId === row.sourceLineId || (other.projectNo === row.projectNo && other.period === row.period && other.idCode === row.idCode)))) return '重复结算明细，请核对来源';
-  return '';
-}
-export function completeSettlements(state, keys, date) {
-  if (!validDate(date)) throw new Error('请填写真实有效的实际付款日期');
-  const rows = state.settlements.filter(row => keys.includes(row.key));
-  if (!rows.length || rows.length !== keys.length) throw new Error('请选择本次有效结算明细');
-  if (new Set(rows.map(row => `${row.approvalKey}|${row.period}`)).size !== 1) throw new Error('本次完成仅限同一来源审批、同一周期');
-  for (const row of rows) { if (row.completedAt) throw new Error('所选明细已完成，请刷新'); const error = settlementError(row, state); if (error) throw new Error(error); }
-  const key = uid('settlement-payment'); const amount = round(rows.reduce((sum, row) => sum + Number(row.amount), 0));
-  if (!(amount > 0)) throw new Error('本次没有正金额实际支出');
-  const entry = { key, date, summary: `兼职结算 · ${rows[0].period}`, payer: [...new Set(rows.map(row => row.bankName))].join('、'), income: 0, expense: amount,
-    source: rows[0].approvalKey, allocations: rows.map(row => ({ target: row.key, approvalKey: row.approvalKey, type: '兼职结算', name: row.projectName, amount: row.amount })) };
-  return { ...state, journal: [...state.journal, entry], settlements: state.settlements.map(row => keys.includes(row.key) ? { ...row, completedAt: new Date().toISOString(), completedBy: '财务 · 赵敏', paidDate: date, journalKey: key } : row) };
 }
 export function projectFinance(projectNo, state) {
   const rows = state.invoices.filter(row => row.projectNo === projectNo);
