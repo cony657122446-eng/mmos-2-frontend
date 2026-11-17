@@ -25,7 +25,8 @@ import { migrateDisplayTextStorage } from './data/displayText';
 import HrDirectory from './components/HrDirectory';
 import HrWorkflow, { HrAnomalyTodos } from './components/HrWorkflow';
 import HrIntakeForm from './components/HrIntakeForm';
-import PersonnelTransferPage from './components/PersonnelTransferPage';
+import PersonnelTransferPage from './components/PersonnelSchedulingPage';
+import { staffingTodoCount } from './data/personnelScheduling';
 import HrDeliveryLineChanges from './components/HrDeliveryLineChanges';
 import HrChangesPage from './components/HrChangesPage';
 import HrPersonnelContracts from './components/HrPersonnelContracts';
@@ -53,7 +54,7 @@ function countHrTodos(role) {
     )).length;
   } catch { return 0; }
 }
-function countTodos(role) { if(role === '招聘经理') return recruitmentTodoCount(role); if(['人事', '部门经理'].includes(role))return countHrTodos(role); if (role === '财务') return loadInvoiceTasks().filter(item => item.invoiceStatus === '待开票').length; const initiation = getInitiationApplications().filter(item => role === 'PMO' ? item.status === '待 PMO 审核' : item.creator === '王然' && ['草稿', '审核不通过'].includes(item.status)).length; return (role==='PM'?countHrTodos(role)+(loadRenewals().renewals||[]).filter(r=>r.status==='待PM确认'&&r.pm==='王然').length:0) + countOperationsTodos(role) + initiation + readQuotes().filter(item => isQuoteTodo(item, role)).length + readAcceptance().filter(item => isAcceptanceTodo(item, role)).length; }
+function countTodos(role) { if(role === '招聘经理') return recruitmentTodoCount(role); if(['人事', '部门经理'].includes(role))return countHrTodos(role); if (role === '财务') return loadInvoiceTasks().filter(item => item.invoiceStatus === '待开票').length; const initiation = getInitiationApplications().filter(item => role === 'PMO' ? item.status === '待 PMO 审核' : item.creator === '王然' && ['草稿', '审核不通过'].includes(item.status)).length; return staffingTodoCount(role, sessionStorage.getItem('mmos.transfer.preview-pm') || 'pm-wang-ran') + (role==='PM'?countHrTodos(role)+(loadRenewals().renewals||[]).filter(r=>r.status==='待PM确认'&&r.pm==='王然').length:0) + countOperationsTodos(role) + initiation + readQuotes().filter(item => isQuoteTodo(item, role)).length + readAcceptance().filter(item => isAcceptanceTodo(item, role)).length; }
 const retiredPersonnelPages = new Set(['hr-career', 'hr-attendance']);
 function App() { const requestedPage = new URLSearchParams(window.location.search).get('page') || 'overview'; const initial = requestedPage === 'hr-training' ? 'hr-candidates' : retiredPersonnelPages.has(requestedPage) ? 'people-master' : requestedPage; const [active, setActive] = React.useState(initial.startsWith('overview:') ? 'overview' : initial.startsWith('quotation') ? 'quotation' : initial.startsWith('acceptance') ? 'acceptance' : initial.startsWith('projects:') ? 'projects' : initial); const [projectFocus,setProjectFocus] = React.useState(initial.startsWith('projects:') ? {no:initial.split(':')[1],scope:initial.split(':')[2]} : null); const [reportFocus, setReportFocus] = React.useState(initial.startsWith('overview:') ? initial.slice(9) : ''); const [quoteFocus, setQuoteFocus] = React.useState(initial.startsWith('quotation:') ? initial.split(':')[1] : ''); const [acceptancePreset, setAcceptancePreset] = React.useState(null); const [initiationPreset, setInitiationPreset] = React.useState(null); const [mobileOpen, setMobileOpen] = React.useState(false); const [role, setRole] = React.useState(() => initial.startsWith('recruitment-') ? 'PM' : initial.startsWith('hr-') || initial === 'people-master' ? '人事' : 'PMO'); const [todoCount, setTodoCount] = React.useState(() => countTodos('PMO')); React.useEffect(() => {
     const update = () => {
