@@ -1054,14 +1054,14 @@ export function mergeHrOutputFacts(previous, rows, options = {}, day = beijingTo
       const ended = project.ended || person.terminated || ['第1天淘汰','第2天淘汰','第2天培训储备'].includes(trainingStage(person)) || person.masterCreated && employmentStatus(person,day)==='已离职';
       // Late historical output remains readable. New conflicting output is
       // evidence to review, never permission to undo an explicit transfer.
-      if (person.transferControl && !person.projectIds.includes(project.id) && source.date >= person.transferControl.effectiveDate) {
+      if (!state.scheduling && person.transferControl && !person.projectIds.includes(project.id) && source.date >= person.transferControl.effectiveDate) {
         const historical = state.outputs.find(row => row.id === source.id && row.personId === person.id && row.projectId === project.id && row.date === source.date);
         if (!historical || historical.category === '待核对') {
           record.category = '待核对';
           record.reason = '产出项目与已执行换项或调休池状态不一致，保留调配结果';
         }
       }
-      if (!ended && !person.transferControl) {
+      if (!ended && !person.transferControl && !(state.scheduling && person.category === '内部人员')) {
         if (person.category === '外部人员') {
           const latest = state.outputs.filter(row => row.id !== source.id && row.personId === person.id && row.category === '外部人员' && validHrDate(row.date)).sort((a,b) => b.date.localeCompare(a.date))[0];
           if (latest?.date === source.date && latest.projectId !== project.id) {
