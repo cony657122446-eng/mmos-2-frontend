@@ -1,0 +1,20 @@
+.staffing-layout { display:grid; grid-template-columns:248px minmax(0,1fr); gap:12px; align-items:start; }
+.staffing-summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:16px 0; }
+.staffing-summary span { font-size:13px; color:#72839f; }
+.staffing-summary strong { display:block; font-size:26px; font-weight:700; color:#192a46; font-variant-numeric:tabular-nums; margin-top:8px; }
+.staffing-page .ant-card { min-width:0; }
+.staffing-page .ant-table-cell { vertical-align:top; }
+.staffing-page .ant-tabs-tabpane { min-width:0; }
+.staffing-page small { font-size:12px; color:#72839f; }
+.staffing-page .transfer-list-card .ant-card-head-title { white-space:normal; font-size:15px; }
+.staffing-page .transfer-batch-bar { align-items:flex-start; }
+.staffing-record { max-height:360px; overflow:auto; padding:16px; border:1px solid #e7eff9; border-radius:8px; background:#f8fbff; white-space:pre-wrap; word-break:break-all; font-size:12px; }
+@media(max-width:1100px) { .staffing-layout { grid-template-columns:220px minmax(0,1fr); } }
+@media(max-width:850px) { .staffing-layout { grid-template-columns:minmax(0,1fr); } .staffing-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+.staffing-basic-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; padding:16px; margin-bottom:16px; background:#f8fbff; border:1px solid #e7eff9; border-radius:8px; }
+.staffing-basic-filters > label { display:flex; flex-direction:column; gap:6px; min-width:0; color:#72839f; font-size:12px; }
+.staffing-basic-filters .ant-select, .staffing-basic-filters .ant-picker { width:100%; min-width:0; }
+.staffing-basic-filters .staffing-filter-abilities, .staffing-basic-filters .staffing-filter-dates { grid-column:span 2; }
+.staffing-filter-summary { grid-column:1 / -1; display:flex; gap:12px; align-items:center; flex-wrap:wrap; color:#72839f; font-size:12px; }
+@media(max-width:600px) { .staffing-basic-filters { grid-template-columns:minmax(0,1fr); } .staffing-basic-filters .staffing-filter-abilities, .staffing-basic-filters .staffing-filter-dates { grid-column:auto; } }
